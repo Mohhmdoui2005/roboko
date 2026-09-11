@@ -1,7 +1,7 @@
 {
-  "name": "Robotics Tournament",
-  "short_name": "Tournament",
-  "description": "Robotics Tournament Management Platform",
+  "name": "Roboko",
+  "short_name": "Roboko",
+  "description": "Roboko Tournament Management Platform",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

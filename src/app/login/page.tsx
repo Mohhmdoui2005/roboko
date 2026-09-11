@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 
@@ -9,6 +9,12 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  // Before React hydrates on the phone (slow dev-server chunks over Wi-Fi),
+  // the form is plain HTML: pressing "Sign in" does a native GET submit,
+  // which reloads /login with a bare "?" and never calls handleLogin.
+  // Keep the button disabled until hydration so the tap can't fire early.
+  const [hydrated, setHydrated] = useState(false)
+  useEffect(() => { setHydrated(true) }, [])
   const router = useRouter()
   const supabase = createClient()
 
@@ -16,19 +22,39 @@ export default function LoginPage() {
     e.preventDefault()
     setError(null)
     setIsLoading(true)
+    // Mobile keyboards often auto-capitalize or append spaces — Supabase treats
+    // "Admin@test.com " as a different login, so normalize before sending.
+    const cleanEmail = email.trim()
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+      const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password })
       if (error) throw new Error(error.message)
+      if (!data.session) {
+        throw new Error('Signed in but no session was returned. Check your connection and retry.')
+      }
 
       const role = data.session.user.app_metadata?.role
+      const target =
+        role === 'ADMIN' ? '/admin'
+        : role === 'ORGA' ? '/orga'
+        : role === 'JURY' ? '/jury'
+        : '/participant'
       router.refresh()
-      if (role === 'ADMIN') window.location.href = '/admin'
-      else if (role === 'ORGA') window.location.href = '/orga'
-      else if (role === 'JURY') window.location.href = '/jury'
-      else window.location.href = '/participant'
-    } catch (err: any) {
-      setError(err.message || 'Invalid login credentials')
+      window.location.assign(target)
+      // Safety net: if we are still on /login 12 s later (e.g. the phone's
+      // browser rejected the session cookie and middleware bounced us back),
+      // re-enable the form with a hint instead of hanging on "Signing in…" forever.
+      setTimeout(() => {
+        if (window.location.pathname === '/login') {
+          setIsLoading(false)
+          setError(
+            'Login reached the server but this browser did not stay signed in (session cookie was not stored). ' +
+            'Clear site data for this site in the phone browser settings and retry.'
+          )
+        }
+      }, 12000)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Invalid login credentials')
       setIsLoading(false)
     }
   }
@@ -50,7 +76,7 @@ export default function LoginPage() {
           </div>
           <div>
             <h1 style={{ fontSize: '1.5rem', lineHeight: 1.1, letterSpacing: '-0.02em', color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}>
-              Tournament Platform
+              Roboko
             </h1>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-tertiary)', marginTop: 4 }}>
               Sign in to your account
@@ -60,7 +86,10 @@ export default function LoginPage() {
 
         {/* ── Form card ── */}
         <div className="card card-emphasized p-6 space-y-5">
-          <form className="space-y-4" onSubmit={handleLogin}>
+          {/* method="post" is a safety net only: if JS never hydrates, the
+              browser falls back to POST (no credentials leaked in the URL
+              as with GET) instead of appending "?" to /login. */}
+          <form className="space-y-4" method="post" onSubmit={handleLogin}>
             <div className="space-y-1.5">
               <label
                 htmlFor="email"
@@ -73,6 +102,10 @@ export default function LoginPage() {
                 type="email"
                 required
                 autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                inputMode="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input"
@@ -110,17 +143,23 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || !hydrated}
               className="btn btn-primary w-full"
               style={{ width: '100%' }}
             >
-              {isLoading ? 'Signing in…' : 'Sign in'}
+              {isLoading ? 'Signing in…' : hydrated ? 'Sign in' : 'Loading…'}
             </button>
+            {/* Shown only when JS is disabled / stripped: explains the reload. */}
+            <noscript>
+              <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', textAlign: 'center' }}>
+                JavaScript is required to sign in. Please enable it and reload this page.
+              </p>
+            </noscript>
           </form>
         </div>
 
         <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
-          Robotics Tournament · Staff &amp; Participant Access
+          Roboko · Staff &amp; Participant Access
         </p>
       </div>
     </div>

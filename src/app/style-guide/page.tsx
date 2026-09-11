@@ -10,7 +10,7 @@ export default function StyleGuidePage() {
           Design System
         </h1>
         <p style={{ color: 'var(--color-text-secondary)', fontSize: '0.9375rem' }}>
-          Deep-Space Command Terminal — Robotics Tournament Platform
+          Deep-Space Command Terminal — Roboko Platform
         </p>
         <p style={{ color: 'var(--color-text-tertiary)', fontSize: '0.8125rem' }}>
           All tokens are CSS variables in <code style={{ fontFamily: 'var(--font-mono)' }}>globals.css</code>.

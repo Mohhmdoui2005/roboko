@@ -20,14 +20,26 @@ interface ActiveSession {
   ends_at: string
 }
 
+interface TeamNotification {
+  id: string
+  message: string
+  type: string | null
+  created_at: string
+  match_id: string | null
+}
+
 export default function ParticipantDashboard() {
-  const { user, isLoading } = useAuth()
+  const { user, teamId, isLoading } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
+  const [teamNotifs, setTeamNotifs] = useState<TeamNotification[]>([])
+  const [dismissedNotifs, setDismissedNotifs] = useState<Set<string>>(new Set())
+  const [lunchClaimedAt, setLunchClaimedAt] = useState<string | null>(null)
   // offsetMs: Date.now() − serverNow — corrects for device clock drift
   const [offsetMs, setOffsetMs] = useState(0)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const notifPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const supabase = createClient()
 
   // ── Load profile once ─────────────────────────────────────────────────────
@@ -61,6 +73,32 @@ export default function ParticipantDashboard() {
     setActiveSession(data ?? null)
   }, [supabase])
 
+  // ── Own lunch claim row: flip badge to Claimed once scanned ──────────────
+  // Polled on the same 10 s tick as team notifications (no extra timer).
+  const fetchLunchClaim = useCallback(async () => {
+    if (!user) return
+    const { data } = await supabase
+      .from('lunch_claims')
+      .select('claimed_at')
+      .eq('user_id', user.id)
+      .maybeSingle()
+    setLunchClaimedAt(data?.claimed_at ?? null)
+  }, [supabase, user])
+
+  // ── GET READY alerts: poll notifications for MY team every 10 s ───────────
+  // Server trigger fires on round-2 submit of the preceding arena match, so
+  // worst case the banner lands ~10 s after the trigger — per acceptance.
+  const fetchTeamNotifs = useCallback(async () => {
+    if (!teamId) return
+    const { data } = await supabase
+      .from('notifications')
+      .select('id,message,type,created_at,match_id')
+      .eq('team_id', teamId)
+      .order('created_at', { ascending: false })
+      .limit(3)
+    if (data) setTeamNotifs(data as TeamNotification[])
+  }, [supabase, teamId])
+
   useEffect(() => {
     if (isLoading || !user) {
       if (!isLoading) setLoadingProfile(false)
@@ -70,13 +108,17 @@ export default function ParticipantDashboard() {
     loadProfile()
     syncServerTime()
     fetchActiveSession()
+    fetchTeamNotifs()
+    fetchLunchClaim()
 
     // 10 000 ms polling — intentionally no Supabase realtime subscription
     pollRef.current = setInterval(fetchActiveSession, 10000)
+    notifPollRef.current = setInterval(() => { fetchTeamNotifs(); fetchLunchClaim() }, 10000)
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
+      if (notifPollRef.current) clearInterval(notifPollRef.current)
     }
-  }, [user, isLoading, loadProfile, syncServerTime, fetchActiveSession])
+  }, [user, isLoading, loadProfile, syncServerTime, fetchActiveSession, fetchTeamNotifs, fetchLunchClaim])
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -103,6 +145,7 @@ export default function ParticipantDashboard() {
   }
 
   const qrPayload = profile?.lunch_qr_payload
+  const visibleNotif = teamNotifs.find(n => !dismissedNotifs.has(n.id)) ?? null
 
   return (
     <div
@@ -132,6 +175,33 @@ export default function ParticipantDashboard() {
             Welcome, {profile?.full_name || user.email}!
           </p>
         </div>
+
+        {/* ── GET READY alert banner (team notifications, polled every 10 s) ── */}
+        {visibleNotif && (
+          <div className="p-4 flex items-start gap-3"
+            style={{
+              borderRadius: 8,
+              border: '1px solid var(--color-warning)',
+              background: 'color-mix(in srgb, var(--color-warning) 8%, var(--color-surface))',
+            }} role="alert">
+            <span style={{ fontSize: '1.25rem' }}>🔔</span>
+            <div className="flex-1">
+              <p style={{ fontWeight: 700, color: 'var(--color-warning)', margin: 0, fontSize: '0.9rem' }}>
+                GET READY — YOUR MATCH IS NEXT
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: '0.875rem', color: 'var(--color-text-primary)' }}>
+                {visibleNotif.message}
+              </p>
+              <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>
+                {new Date(visibleNotif.created_at).toLocaleTimeString()} · updates every 10 s
+              </p>
+            </div>
+            <button className="btn" style={{ minHeight: 40 }}
+              onClick={() => setDismissedNotifs(prev => new Set(prev).add(visibleNotif.id))}>
+              Dismiss
+            </button>
+          </div>
+        )}
 
         {/* ── Active Test Session Countdown ── */}
         <div className={`card ${activeSession ? 'card-live' : 'card-emphasized'} p-6 space-y-4`}>
@@ -218,9 +288,9 @@ export default function ParticipantDashboard() {
               <span className="badge badge-warning">
                 Meal Voucher
               </span>
-              {profile?.lunch_claimed && (
+              {(lunchClaimedAt || profile?.lunch_claimed) && (
                 <span className="badge badge-success">
-                  ✓ Claimed
+                  ✓ Claimed{lunchClaimedAt ? ` ${new Date(lunchClaimedAt).toLocaleTimeString()}` : ''}
                 </span>
               )}
             </div>
@@ -228,7 +298,12 @@ export default function ParticipantDashboard() {
               Participant Lunch QR Code
             </h2>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-              Present this scannable badge at the catering station to redeem your lunch.
+              {lunchClaimedAt || profile?.lunch_claimed
+                ? 'Lunch redeemed — enjoy your meal!'
+                : 'Present this scannable badge at the catering station to redeem your lunch.'}
+            </p>
+            <p style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)', margin: 0 }}>
+              claim status refreshes every 10 s
             </p>
           </div>
         </div>

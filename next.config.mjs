@@ -1,8 +1,22 @@
 import withPWAInit from "@ducanh2912/next-pwa";
 
+// Supabase REST (reads + RPC POSTs) lives outside /api — match it directly.
+// GETs are cached network-first; POST mutations are never served from cache
+// (they go through the IndexedDB mutation queue on failure instead).
+const supabaseHost = (() => {
+  try {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    return url ? new URL(url).host.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") : null;
+  } catch {
+    return null;
+  }
+})();
+
 const withPWA = withPWAInit({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
+  // Never auto-reload on reconnect: jury/orga hold live scoring state.
+  reloadOnOnline: false,
   // Precache ONLY /login and /live
   additionalManifestEntries: [
     { url: "/login", revision: null },
@@ -35,6 +49,25 @@ const withPWA = withPWAInit({
           },
         },
       },
+      // Supabase REST reads (GET only — POSTs bypass): network-first so the
+      // app shell + live data work with stale-while-offline reads.
+      ...(supabaseHost
+        ? [
+            {
+              urlPattern: new RegExp(`^https://${supabaseHost}/rest/v1/.*`),
+              handler: "NetworkFirst",
+              method: "GET",
+              options: {
+                cacheName: "supabase-rest",
+                expiration: {
+                  maxEntries: 100,
+                  maxAgeSeconds: 5 * 60, // 5 minutes — live data goes stale fast
+                },
+                networkTimeoutSeconds: 5,
+              },
+            },
+          ]
+        : []),
     ],
   },
 });

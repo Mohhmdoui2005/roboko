@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from "@/components/AuthProvider";
+import QueryProvider from "@/components/QueryProvider";
 
 export const metadata: Metadata = {
-  title: "Robotics Tournament",
-  description: "Management Platform",
+  title: "Roboko",
+  description: "Roboko Tournament Management Platform",
 };
 
 export default function RootLayout({
@@ -16,7 +17,9 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <AuthProvider>
-          {children}
+          <QueryProvider>
+            {children}
+          </QueryProvider>
         </AuthProvider>
       </body>
     </html>

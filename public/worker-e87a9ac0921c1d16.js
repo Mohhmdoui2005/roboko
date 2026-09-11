@@ -1,0 +1,1 @@
+self.addEventListener("sync",t=>{"replay-mutations"===t.tag&&t.waitUntil((async()=>{(await self.clients.matchAll({includeUncontrolled:!0})).forEach(t=>{t.postMessage({type:"REPLAY_MUTATIONS"})})})())});
