@@ -1,6 +1,7 @@
 'use client'
 
 import SignOutButton from '@/components/SignOutButton'
+import ThemeSwitcher from '@/components/ThemeSwitcher'
 
 // N8 Terminal command nav — `> roboko --<role>▮`. Same ownership/props, new voice.
 // Hallmark · nav: N8 Terminal command · genre: atmospheric · theme: Terminal · design-system: design.md · designed-as-app
@@ -24,8 +25,9 @@ export default function RoleTopBar({ role }: { role: string }) {
         <span>--{flag}</span>
         <span aria-hidden="true" className="term-prompt__cursor" />
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" style={{ flexShrink: 0 }}>
         <span className="badge badge-neutral">{role}</span>
+        <ThemeSwitcher />
         <SignOutButton />
       </div>
     </div>

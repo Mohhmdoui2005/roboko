@@ -15,6 +15,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 
 @import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap");
 @import "tailwindcss";
 
 /* ── 1. Design Tokens ──────────────────────────────────────────────────────── */
@@ -459,4 +460,65 @@ body { overflow-x: clip; }
 @media (prefers-reduced-motion: reduce) {
   .reveal { animation: reveal-reduced 150ms linear forwards; }
   @keyframes reveal-reduced { to { opacity: 1; transform: none; } }
+}
+
+/* Hallmark · macrostructure: Bento Grid / Stat-Led / Long Document · H4 stat knobs: number=tabular-display, qualifier=below
+ * theme: custom · vibe: "daylight pit-lane, sun-baked, ember signal" · paper: oklch(93% 0.020 75) · accent: oklch(58% 0.17 38)
+ * display: Bricolage Grotesk 700 · body: Archivo · axes: light / display-heavy / warm
+ * studied: no · context: inferred (full freedom delegated)
+ */
+[data-theme="ember"] {
+  /* Surfaces — sun-baked bone; cards lift toward white, hover settles deeper */
+  --color-bg:        oklch(93% 0.020 75);
+  --color-surface:   oklch(96.5% 0.012 80);
+  --color-raised:    oklch(90% 0.022 75);
+  --color-border:    oklch(82% 0.025 78);
+  --color-border-strong: oklch(71% 0.045 80);
+
+  /* Accent — ember signal. Filled primary only; text accents use accent-text */
+  --color-accent:      oklch(58% 0.17 38);
+  --color-accent-text: oklch(48% 0.15 38);
+
+  /* Text — carbon ink, warm */
+  --color-text-primary:   oklch(21% 0.012 60);
+  --color-text-secondary: oklch(45% 0.012 60);
+  --color-text-tertiary:  oklch(60% 0.025 75);
+
+  /* Semantic — independent of accent on light paper */
+  --color-success: oklch(55% 0.13 150);
+  --color-warning: oklch(58% 0.13 80);
+  --color-danger:  oklch(55% 0.19 28);
+  --color-info:    oklch(55% 0.13 250);
+
+  /* Display voice flips to daylight grotesque; body + mono stay for ops legibility */
+  --font-display: "Bricolage Grotesk", "Archivo", system-ui, sans-serif;
+  --font-heading: "Bricolage Grotesk", "Archivo", system-ui, sans-serif;
+
+  /* Buttons go filled + 10px; ghost stays hairline */
+  --radius-card: 10px;
+
+  /* Dark ink reads on the ember fill (accent L > 50) */
+  --color-accent-ink: oklch(21% 0.012 60);
+  --color-qr-paper:   oklch(99% 0.005 90);
+}
+
+/* Ember button voice — filled signal primary, single lift, instant press */
+[data-theme="ember"] .btn {
+  transition: transform var(--dur-micro) var(--ease-out), border-color 0.15s, color 0.15s, background-color 0.15s, box-shadow var(--dur-short) var(--ease-out);
+}
+[data-theme="ember"] .btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+[data-theme="ember"] .btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+[data-theme="ember"] .btn-primary {
+  background-color: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+[data-theme="ember"] .btn-primary:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent-ink);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--color-text-primary) 15%, transparent);
 }

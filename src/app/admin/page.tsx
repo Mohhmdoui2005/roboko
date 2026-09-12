@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/components/AuthProvider'
+import { setTheme, THEMES, useTheme } from '@/lib/theme'
 
 interface MatchRow {
   id: string
@@ -48,6 +49,7 @@ export default function AdminDashboard() {
   const [knockoutLive, setKnockoutLive] = useState(false)
   const [lunchCount, setLunchCount] = useState<number | null>(null)
   const [activeSessions, setActiveSessions] = useState(0)
+  const theme = useTheme()
 
   const fetchAll = useCallback(async () => {
     const [
@@ -198,6 +200,21 @@ export default function AdminDashboard() {
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              <div role="group" aria-label="Interface theme" className="flex items-center gap-1 p-1"
+                style={{ border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)' }}>
+                {THEMES.map(t => (
+                  <button key={t.id} onClick={() => setTheme(t.id)}
+                    aria-pressed={theme === t.id} className="btn font-mono"
+                    style={{
+                      minHeight: 40, padding: '0 0.8rem', fontSize: '0.75rem',
+                      ...(theme === t.id
+                        ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent-text)' }
+                        : { borderColor: 'transparent', color: 'var(--color-text-tertiary)' }),
+                    }}>
+                    {t.label}
+                  </button>
+                ))}
+              </div>
               <Link href="/live" className="btn" style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Live screen</Link>
               <Link href="/bracket" className="btn" style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Bracket</Link>
               <button onClick={fetchAll} className="btn btn-primary" style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Refresh</button>

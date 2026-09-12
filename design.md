@@ -69,6 +69,29 @@ tokens (`var(--space-md)`), never raw values.
 - Hero archetype (within the family's allowance).
 - Enrichment — only on venue pages, only Tier-A.
 
+## Variants
+
+### Ember (custom, switchable with Terminal)
+Vibe: "daylight pit-lane, sun-baked, ember signal" · axes: light / display-heavy / warm.
+Selected via the admin command-center switcher (`Terminal | Ember`), persisted in
+`localStorage:roboko-theme`, applied as `data-theme` on `<html>` (see `src/lib/theme.ts`;
+pre-paint init in `src/app/layout.tsx`). All token-driven components flip with no
+logic changes; structures, macrostructure families, and CTA rhythm are shared.
+
+- `--color-paper`   oklch(93% 0.020 75)   (`--color-bg`)
+- `--color-paper-2` oklch(96.5% 0.012 80) (`--color-surface`)
+- `--color-paper-3` oklch(90% 0.022 75)   (`--color-raised`)
+- `--color-ink`     oklch(21% 0.012 60)
+- `--color-ink-2`   oklch(45% 0.012 60)
+- `--color-rule`    oklch(82% 0.025 78)   (`--color-border`)
+- `--color-accent`  oklch(58% 0.17 38)    (ember; filled primary only)
+- `--color-focus`   oklch(55% 0.20 38)
+
+- Display: Bricolage Grotesk 700 (roman) · Body: Archivo 400 · Mono: IBM Plex Mono.
+- Buttons: primary filled accent + ink text, 10px radius, one lift on hover, instant press.
+- Semantic colors are independent of accent on light paper (success leaf-green,
+  warning amber, danger red, info blue per `globals.css`).
+
 ## Exports
 
 ### tokens.css

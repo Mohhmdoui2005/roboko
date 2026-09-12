@@ -35,3 +35,7 @@
   --dur-short: 220ms; --dur-micro: 120ms; --dur-long: 420ms;
   --radius-card: 8px; --radius-pill: 9999px; --radius-input: 8px;
 }
+
+/* Ember variant (custom, switchable): full override lives on
+ * [data-theme="ember"] in src/app/globals.css — same names, daylight values.
+ * Vibe: "daylight pit-lane, sun-baked, ember signal" · light / display-heavy / warm. */

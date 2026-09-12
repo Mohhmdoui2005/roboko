@@ -66,8 +66,10 @@ export default function ParticipantDashboard() {
     const before = Date.now()
     const { data } = await supabase.rpc('get_server_time')
     const after = Date.now()
-    if (data?.now) {
-      const serverNow = new Date(data.now).getTime()
+    // Contract is {now}, but tolerate a bare timestamptz scalar (legacy shape).
+    const nowRaw = typeof data === 'string' ? data : (data as { now?: string } | null)?.now
+    if (nowRaw) {
+      const serverNow = new Date(nowRaw).getTime()
       // Use midpoint of the round-trip to estimate the server time
       const midpoint = (before + after) / 2
       setOffsetMs(midpoint - serverNow)

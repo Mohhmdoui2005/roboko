@@ -2,6 +2,16 @@
   {
     "date": "2026-09-12",
     "macrostructure": "Bento Grid / Stat-Led / Long Document",
+    "theme": "custom",
+    "theme_axes": "light / display-heavy / warm",
+    "vibe": "daylight pit-lane, sun-baked, ember signal",
+    "enrichment": "none",
+    "brief": "Ember variant + admin theme switcher",
+    "scope": "app"
+  },
+  {
+    "date": "2026-09-12",
+    "macrostructure": "Bento Grid / Stat-Led / Long Document",
     "theme": "Terminal",
     "enrichment": "none (Tier-A surface-grid venue only)",
     "brief": "Roboko Tournament full-app redesign",
