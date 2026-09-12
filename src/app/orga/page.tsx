@@ -16,7 +16,7 @@ export default function Page() {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* Lunch */}
           <div className="card card-emphasized p-6 flex flex-col gap-4">
-            <div style={{ fontSize: '2rem' }}>🍽️</div>
+            <p className="term-prompt text-xs" style={{ color: 'var(--color-text-tertiary)' }}>&gt; roboko --station lunch</p>
             <div>
               <h2 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
                 Lunch
@@ -32,7 +32,7 @@ export default function Page() {
 
           {/* Testing */}
           <div className="card card-emphasized p-6 flex flex-col gap-4">
-            <div style={{ fontSize: '2rem' }}>🤖</div>
+            <p className="term-prompt text-xs" style={{ color: 'var(--color-text-tertiary)' }}>&gt; roboko --station testing</p>
             <div>
               <h2 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
                 Testing

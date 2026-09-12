@@ -360,3 +360,85 @@ code, kbd, pre, samp, .font-mono {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Hallmark · genre: atmospheric · macrostructure: Bento Grid / Stat-Led / Long Document · theme: Terminal · design-system: design.md · designed-as-app
+ * nav: N8 Terminal command · footer: Ft4 Dense colophon · enrichment: none (Tier-A surface-grid venue only)
+ * F1 Bento knobs: tiles=6, spans=irregular, border=hairline-all · H4 Stat knobs: number=tabular-display, qualifier=below, secondary=two-below
+ */
+html { overflow-x: clip; }
+body { overflow-x: clip; }
+
+:root {
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-micro: 120ms;
+  --dur-short: 220ms;
+  --dur-long: 420ms;
+}
+
+/* Stacked section heads — label above, heading directly underneath, same column */
+.section-head { display: flex; flex-direction: column; gap: var(--space-2xs, 0.5rem); }
+.section-head__label {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+.section-head__title {
+  font-family: var(--font-display);
+  font-style: normal;
+  letter-spacing: -0.02em;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+/* Stat-Led venue hero — giant tabular number, qualifier below */
+.stat-hero__number {
+  font-family: var(--font-display);
+  font-style: normal;
+  font-weight: 700;
+  font-size: var(--text-display, clamp(2.75rem, 5vw + 1rem, 5.25rem));
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.stat-hero__qualifier {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--color-text-tertiary);
+}
+
+/* Bento asymmetry — ops consoles lead with one dominant tile */
+.bento { display: grid; gap: var(--space-md, 1.5rem); grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr) minmax(0, 0.8fr); }
+@media (max-width: 60rem) {
+  .bento { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .bento__lead { grid-column: span 2; }
+}
+@media (max-width: 40rem) {
+  .bento { grid-template-columns: minmax(0, 1fr); }
+  .bento__lead { grid-column: span 1; }
+}
+
+/* Terminal prompt nav line */
+.term-prompt { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.term-prompt__cursor {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.1em;
+  vertical-align: text-bottom;
+  background: var(--color-accent);
+  animation: urgency-pulse 1.8s ease-in-out infinite;
+}
+
+/* Fade-only reveal */
+.reveal { opacity: 0; transform: translateY(8px); animation: reveal var(--dur-long, 420ms) var(--ease-out) forwards; animation-delay: calc(var(--i, 0) * 60ms); }
+@keyframes reveal { to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .reveal { animation: reveal-reduced 150ms linear forwards; }
+  @keyframes reveal-reduced { to { opacity: 1; transform: none; } }
+}

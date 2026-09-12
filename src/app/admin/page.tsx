@@ -28,14 +28,14 @@ const NAV = [
 ]
 
 const TOOLS = [
-  { title: 'Teams', desc: 'Rename teams — live everywhere', href: '/admin/teams', icon: '✏️' },
-  { title: 'Phase 1', desc: 'Generate 54 qual matches + publish', href: '/admin/phase1', icon: '🗂️' },
-  { title: 'Knockout', desc: 'Top-16 seeds → bracket', href: '/admin/knockout', icon: '🏆' },
-  { title: 'Leaderboard', desc: 'Standings + refresh', href: '/admin/leaderboard', icon: '📊' },
-  { title: 'Lunch', desc: 'Start time + broadcast', href: '/admin/lunch', icon: '🍽️' },
-  { title: 'QR Codes', desc: 'Robot QR grid + print', href: '/admin/qr-codes', icon: '🔳' },
-  { title: 'Test Room', desc: 'Arena occupancy + override', href: '/admin/testing', icon: '🤖' },
-  { title: 'Users', desc: 'Accounts, roles + delete', href: '/admin/users', icon: '👥' },
+  { title: 'Teams', desc: 'Rename teams — live everywhere', href: '/admin/teams', tag: 'TM' },
+  { title: 'Phase 1', desc: 'Generate 54 qual matches + publish', href: '/admin/phase1', tag: 'P1' },
+  { title: 'Knockout', desc: 'Top-16 seeds → bracket', href: '/admin/knockout', tag: 'KO' },
+  { title: 'Leaderboard', desc: 'Standings + refresh', href: '/admin/leaderboard', tag: 'LB' },
+  { title: 'Lunch', desc: 'Start time + broadcast', href: '/admin/lunch', tag: 'LU' },
+  { title: 'QR Codes', desc: 'Robot QR grid + print', href: '/admin/qr-codes', tag: 'QR' },
+  { title: 'Test Room', desc: 'Arena occupancy + override', href: '/admin/testing', tag: 'TR' },
+  { title: 'Users', desc: 'Accounts, roles + delete', href: '/admin/users', tag: 'US' },
 ]
 
 export default function AdminDashboard() {
@@ -203,42 +203,32 @@ export default function AdminDashboard() {
             </div>
           </header>
 
-          {/* ── Row 1: status ── */}
+          {/* ── Row 1: status — Stat-Led, dark paper, no gradient fill ── */}
           <section className="grid grid-cols-1 md:grid-cols-12 gap-5">
-            <div className="md:col-span-12 rounded-[24px] p-6 flex flex-col justify-between relative overflow-hidden min-h-[210px]"
-              style={{ background: 'linear-gradient(135deg, #7cf03d 0%, #46cf23 45%, #229916 100%)', color: '#000' }}>
-              <div style={{
-                position: 'absolute', width: 240, height: 240, borderRadius: '50%',
-                background: 'radial-gradient(circle, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 70%)',
-                top: -60, right: -40, pointerEvents: 'none',
-              }} />
-              <div style={{
-                position: 'absolute', width: 300, height: 300, borderRadius: '40%',
-                border: '30px solid rgba(255,255,255,0.22)',
-                bottom: -160, right: -70, transform: 'rotate(25deg)', pointerEvents: 'none',
-              }} />
+            <div className="bento__lead md:col-span-12 card p-6 flex flex-col justify-between relative overflow-hidden min-h-[210px] reveal">
               <div className="flex items-center justify-between relative">
-                <span className="text-xs font-bold uppercase" style={{ letterSpacing: '0.08em', color: '#000' }}>
-                  Tournament Status
-                </span>
-                <span className="text-xs font-bold px-2.5 py-1 rounded-full"
-                  style={{ background: '#fff', color: '#000' }}>
+                <div className="section-head">
+                  <span className="section-head__label">Tournament status</span>
+                  <span className="term-prompt text-xs" style={{ color: 'var(--color-text-tertiary)' }}>&gt; roboko --status</span>
+                </div>
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full font-mono"
+                  style={{ border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
                   {total} matches
                 </span>
               </div>
               <div className="my-2 relative">
-                <div className="flex items-baseline gap-1.5" style={{ fontFamily: 'var(--font-heading)', color: '#000' }}>
-                  <span className="text-4xl font-bold tracking-tight" style={{ color: '#000' }}>{done}</span>
-                  <span className="text-lg font-semibold" style={{ color: '#000' }}>/ {total} done</span>
+                <div className="flex items-baseline gap-1.5">
+                  <span className="stat-hero__number">{done}</span>
+                  <span className="stat-hero__qualifier">/ {total} done · {stats.qualPending} qual pending</span>
                 </div>
               </div>
               <div className="flex items-center gap-2.5 pt-1 relative">
-                <Link href="/admin/phase1" className="flex-1 text-center font-semibold text-xs py-2.5 px-3 rounded-full"
-                  style={{ background: '#fff', color: '#000', textDecoration: 'none' }}>
+                <Link href="/admin/phase1" className="btn flex-1 text-center"
+                  style={{ minHeight: 40, fontSize: '0.8rem' }}>
                   Phase 1 · {stats.qualPending} pending
                 </Link>
-                <Link href="/admin/knockout" className="flex-1 text-center font-semibold text-xs py-2.5 px-3 rounded-full"
-                  style={{ background: '#fff', color: '#000', textDecoration: 'none' }}>
+                <Link href="/admin/knockout" className="btn btn-primary flex-1 text-center"
+                  style={{ minHeight: 40, fontSize: '0.8rem' }}>
                   Knockout · {stats.koTotal || 'setup'}
                 </Link>
               </div>
@@ -283,17 +273,17 @@ export default function AdminDashboard() {
             <div className="lg:col-span-6 rounded-[24px] p-6 flex flex-col justify-between"
               style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
               <div className="flex items-center justify-between">
-                <h3 className="font-bold text-base" style={{ color: 'var(--color-text-primary)' }}>✦ Control Center</h3>
+                <h3 className="font-bold text-base" style={{ color: 'var(--color-text-primary)' }}>Control Center</h3>
                 <span className="badge badge-success">OPERATIONAL</span>
               </div>
               <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>Every admin tool — one tap.</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+              <div className="mt-4" style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))' }}>
                 {TOOLS.map(t => (
                   <Link key={t.title} href={t.href}
                     className="flex items-center justify-between p-3 rounded-2xl transition-colors"
                     style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', textDecoration: 'none' }}>
                     <span className="flex items-center gap-3">
-                      <span style={{ fontSize: '1.1rem' }}>{t.icon}</span>
+                      <span className="font-mono text-xs font-bold" style={{ color: 'var(--color-accent-text)', border: '1px solid var(--color-border)', borderRadius: 6, padding: '2px 6px' }}>{t.tag}</span>
                       <span>
                         <span className="block text-xs font-bold" style={{ color: 'var(--color-text-primary)' }}>{t.title}</span>
                         <span className="block text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>{t.desc}</span>

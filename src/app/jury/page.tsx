@@ -54,6 +54,13 @@ interface WarningArgs {
   p_request_id?: string
 }
 
+interface WarningResult {
+  warnings_team1: number
+  warnings_team2: number
+  deduped?: boolean
+  forfeit?: { applied: boolean; round_number: number } | null
+}
+
 const ARENA_FALLBACK = ['Arena A', 'Arena B', 'Arena C', 'Arena D']
 
 function resultLabel(t1: number | null, t2: number | null): string {
@@ -302,7 +309,8 @@ export default function JuryDashboard() {
   }
 
   // ── Warnings via queued mutation (idempotent p_request_id, no doubles) ─────
-  const warningMutation = useQueuedRpc<WarningArgs, { warnings_team1: number; warnings_team2: number }>({
+  // 3rd warning auto-forfeits the current round server-side (see warning_update.sql).
+  const warningMutation = useQueuedRpc<WarningArgs, WarningResult>({
     endpoint: 'increment_warning',
     onOptimistic: (args) => {
       const m = matches.find(x => x.id === args.p_match_id)
@@ -328,6 +336,12 @@ export default function JuryDashboard() {
         showToast(`Warning failed: ${result.error.message}`, 'error')
       } else if (result.queued) {
         showToast('Offline — warning queued', 'success')
+      } else if (result.data.forfeit?.applied) {
+        showToast(`3rd warning — ${teamName(args.p_team_id)} loses round ${result.data.forfeit.round_number}`, 'error')
+        if (arena) fetchMatches(arena, phase)
+        fetchRounds(args.p_match_id)
+      } else if (arena) {
+        fetchMatches(arena, phase)
       }
     },
   })
@@ -335,6 +349,44 @@ export default function JuryDashboard() {
   const addWarning = (teamId: string | null) => {
     if (!selected || !teamId || warningBusy) return
     warningMutation.mutate({ p_match_id: selected.id, p_team_id: teamId })
+  }
+
+  // ── Remove warning (decrement, floors at 0; a recorded forfeit stands) ─────
+  const removeWarningMutation = useQueuedRpc<WarningArgs, WarningResult>({
+    endpoint: 'decrement_warning',
+    onOptimistic: (args) => {
+      const m = matches.find(x => x.id === args.p_match_id)
+      if (!m) return
+      const field = args.p_team_id === m.team1_id ? 'warnings_team1' : 'warnings_team2'
+      setWarningBusy(args.p_team_id)
+      setMatches(prev => prev.map(x =>
+        x.id === args.p_match_id ? { ...x, [field]: Math.max(0, (x[field as keyof Match] as number) - 1) } : x
+      ))
+    },
+    onRollback: (args) => {
+      const m = matches.find(x => x.id === args.p_match_id)
+      if (!m) return
+      const field = args.p_team_id === m.team1_id ? 'warnings_team1' : 'warnings_team2'
+      setMatches(prev => prev.map(x =>
+        x.id === args.p_match_id ? { ...x, [field]: (x[field as keyof Match] as number) + 1 } : x
+      ))
+      setWarningBusy(null)
+    },
+    onSettled: (result) => {
+      setWarningBusy(null)
+      if ('error' in result) {
+        showToast(`Remove warning failed: ${result.error.message}`, 'error')
+      } else if (result.queued) {
+        showToast('Offline — removal queued', 'success')
+      } else if (arena) {
+        fetchMatches(arena, phase)
+      }
+    },
+  })
+
+  const removeWarning = (teamId: string | null, count: number) => {
+    if (!selected || !teamId || warningBusy || count <= 0) return
+    removeWarningMutation.mutate({ p_match_id: selected.id, p_team_id: teamId })
   }
 
   // NOTE: every hook must run on every render — nothing hook-like may sit
@@ -356,6 +408,15 @@ export default function JuryDashboard() {
         return { ...m, [field]: Math.max(0, (m[field as keyof Match] as number) - 1) }
       }))
       showToast('Queued warning was rejected after reconnect — rolled back', 'error')
+    } else if (item.endpoint === 'decrement_warning') {
+      const mid = item.payload.p_match_id as string
+      const tid = item.payload.p_team_id as string
+      setMatches(prev => prev.map(m => {
+        if (m.id !== mid) return m
+        const field = tid === m.team1_id ? 'warnings_team1' : 'warnings_team2'
+        return { ...m, [field]: (m[field as keyof Match] as number) + 1 }
+      }))
+      showToast('Queued warning removal was rejected after reconnect — rolled back', 'error')
     }
   }, [showToast, fetchRounds])
 
@@ -378,6 +439,11 @@ export default function JuryDashboard() {
   }
 
   const visibleNotif = notifs.find(n => !dismissed.has(n.id)) ?? null
+  // Jury-voiced on-deck info: resolve the notified match to teams + queue slot.
+  // The raw notification copy ("Your match is next…") is written for participants.
+  const onDeckMatch = visibleNotif?.match_id
+    ? matches.find(m => m.id === visibleNotif.match_id) ?? null
+    : null
 
   return (
     <div className="min-h-screen p-4 sm:p-6"
@@ -425,19 +491,25 @@ export default function JuryDashboard() {
           </div>
         </div>
 
-        {/* ── Get Ready banner (arena poll, 5 s) ── */}
+        {/* ── On-deck banner (arena poll, 5 s) — jury voice, not participant copy ── */}
         {visibleNotif && (
           <div className="p-4 flex items-start gap-3"
             style={{
               borderRadius: 8, border: '1px solid var(--color-warning)',
               background: 'color-mix(in srgb, var(--color-warning) 8%, var(--color-surface))',
             }} role="alert">
-            <span style={{ fontSize: '1.25rem' }}>🔔</span>
+            <span className="font-mono text-xs font-bold" style={{ color: 'var(--color-warning)', border: '1px solid var(--color-warning)', borderRadius: 6, padding: '2px 6px', whiteSpace: 'nowrap' }}>ON DECK</span>
             <div className="flex-1">
               <p style={{ fontWeight: 700, color: 'var(--color-warning)', margin: 0, fontSize: '0.9rem' }}>
-                GET READY
+                {onDeckMatch
+                  ? `#${onDeckMatch.queue_index} · ${teamName(onDeckMatch.team1_id)} vs ${teamName(onDeckMatch.team2_id)}`
+                  : 'Next match in your arena'}
               </p>
-              <p style={{ margin: '2px 0 0', fontSize: '0.875rem' }}>{visibleNotif.message}</p>
+              <p style={{ margin: '2px 0 0', fontSize: '0.875rem' }}>
+                {onDeckMatch
+                  ? `Prepare ${arena} — ${onDeckMatch.status}`
+                  : visibleNotif.message}
+              </p>
               <p style={{ margin: '2px 0 0', fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>
                 {new Date(visibleNotif.created_at).toLocaleTimeString()} · polled every 5 s
               </p>
@@ -494,7 +566,7 @@ export default function JuryDashboard() {
                   {teamName(m.team1_id)} <span style={{ color: 'var(--color-text-tertiary)' }}>vs</span> {teamName(m.team2_id)}
                 </p>
                 <p style={{ margin: '2px 0 0', fontSize: '0.72rem', color: 'var(--color-text-tertiary)' }}>
-                  Round {m.current_round ?? 1} · ⚠ {m.warnings_team1 ?? 0}/{m.warnings_team2 ?? 0}
+                  Round {m.current_round ?? 1} · WARN {m.warnings_team1 ?? 0}/{m.warnings_team2 ?? 0}
                   {m.subphase ? ` · Subphase ${m.subphase}` : ''}
                 </p>
               </button>
@@ -566,21 +638,21 @@ export default function JuryDashboard() {
                         style={{ minHeight: 64, fontSize: '1.05rem' }}
                         disabled={submitting}
                         onClick={() => submitRound(1, 0)}>
-                        🏆 {teamName(selected.team1_id)} WINS
+                        {teamName(selected.team1_id)} WINS
                       </button>
                       {!(round4Unlocked || (selected.current_round ?? 1) === 4) && (
                         <button className="btn"
                           style={{ minHeight: 64, fontSize: '1.05rem' }}
                           disabled={submitting}
                           onClick={() => submitRound(null, null)}>
-                          ➖ NULL / DRAW
+                          NULL / DRAW
                         </button>
                       )}
                       <button className="btn btn-primary"
                         style={{ minHeight: 64, fontSize: '1.05rem' }}
                         disabled={submitting}
                         onClick={() => submitRound(0, 1)}>
-                        🏆 {teamName(selected.team2_id)} WINS
+                        {teamName(selected.team2_id)} WINS
                       </button>
                     </div>
                     {submitting && (
@@ -601,20 +673,43 @@ export default function JuryDashboard() {
                 {/* Warnings */}
                 <div className="space-y-2">
                   <h3 style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)', margin: 0 }}>
-                    Warnings (separate action)
+                    Warnings — 3 per round
                   </h3>
+                  <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                    3rd warning loses the round · counters reset each round
+                  </p>
                   <div className="grid grid-cols-2 gap-3">
                     {([
                       { id: selected.team1_id, count: selected.warnings_team1 ?? 0 },
                       { id: selected.team2_id, count: selected.warnings_team2 ?? 0 },
                     ] as const).map(w => (
-                      <button key={w.id ?? 'x'} className="btn"
-                        style={{ minHeight: 56 }}
-                        disabled={!w.id || warningBusy !== null}
-                        onClick={() => addWarning(w.id)}>
-                        ⚠ {teamName(w.id)} ({w.count})
-                        {warningBusy === w.id ? ' …' : ''}
-                      </button>
+                      <div key={w.id ?? 'x'} className="card p-3 space-y-2">
+                        <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                          {teamName(w.id)}{' '}
+                          <span className="font-mono" style={{ color: w.count >= 2 ? 'var(--color-danger)' : 'var(--color-text-secondary)' }}>
+                            ({w.count})
+                          </span>
+                        </p>
+                        <div className="flex gap-2">
+                          <button className="btn btn-primary flex-1"
+                            style={{ minHeight: 48 }}
+                            disabled={!w.id || warningBusy !== null}
+                            onClick={() => addWarning(w.id)}>
+                            + Warn{warningBusy === w.id ? ' …' : ''}
+                          </button>
+                          <button className="btn flex-1"
+                            style={{ minHeight: 48 }}
+                            disabled={!w.id || warningBusy !== null || w.count <= 0}
+                            onClick={() => removeWarning(w.id, w.count)}>
+                            − Remove
+                          </button>
+                        </div>
+                        {w.count >= 2 && (
+                          <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-warning)' }}>
+                            Next warning loses the current round
+                          </p>
+                        )}
+                      </div>
                     ))}
                   </div>
                 </div>

@@ -183,13 +183,14 @@ export default function LivePage() {
       <style>{`@keyframes live-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }`}</style>
 
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="surface-grid flex items-center justify-between gap-4 px-4 py-4 -mx-4 sm:-mx-8"
+        <div className="surface-grid flex items-start justify-between gap-4 px-4 py-4 -mx-4 sm:-mx-8"
           style={{ borderBottom: '1px solid var(--color-border)' }}>
-          <div>
-            <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
-              {knockoutLive ? '🏆 Knockout Stage' : '📊 Qualification'}
+          <div className="section-head">
+            <span className="section-head__label">{knockoutLive ? 'Knockout stage' : 'Qualification'} · venue display</span>
+            <h1 className="section-head__title" style={{ fontSize: '2rem', fontWeight: 800, margin: 0 }}>
+              {knockoutLive ? 'Knockout Stage' : 'Qualification'}
             </h1>
-            <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)', margin: '4px 0 0' }}>
+            <p className="stat-hero__qualifier">
               {lastUpdate ? `updated ${lastUpdate}` : 'loading…'}
               {fallback ? ' · reconnecting (30 s poll)' : ''}
             </p>
@@ -237,6 +238,9 @@ export default function LivePage() {
             <BracketSvg nodes={nodes} matches={koMatches} teamNames={teamNames} />
           </div>
         )}
+        <footer className="font-mono" style={{ fontSize: '0.6875rem', color: 'var(--color-text-tertiary)', borderTop: '1px solid var(--color-border)', paddingTop: '1rem' }}>
+          roboko · live · {connected ? 'subscribed: matches + bracket' : 'polling fallback'} · renders only on visible change
+        </footer>
       </div>
     </div>
   )

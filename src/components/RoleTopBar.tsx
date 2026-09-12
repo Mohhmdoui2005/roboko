@@ -2,9 +2,10 @@
 
 import SignOutButton from '@/components/SignOutButton'
 
-// Slim account bar rendered above every page of a role area via that
-// area's layout.tsx — one place instead of a button in each page header.
+// N8 Terminal command nav — `> roboko --<role>▮`. Same ownership/props, new voice.
+// Hallmark · genre: atmospheric · macrostructure: Bento Grid · design-system: design.md · designed-as-app
 export default function RoleTopBar({ role }: { role: string }) {
+  const flag = role.toLowerCase().replace(/[^a-z0-9]+/g, '-')
   return (
     <div
       className="w-full flex items-center justify-between gap-3 px-4"
@@ -14,21 +15,18 @@ export default function RoleTopBar({ role }: { role: string }) {
         borderBottom: '1px solid var(--color-border)',
       }}
     >
-      <div className="flex items-center gap-2">
-        <div
-          className="inline-flex items-center justify-center w-6 h-6 rounded-md"
-          style={{ border: '2px solid var(--color-accent)' }}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-          </svg>
-        </div>
-        <span className="text-sm font-bold" style={{ color: 'var(--color-text-primary)' }}>
-          Roboko
+      <div className="term-prompt flex items-center gap-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+        <span aria-hidden="true" style={{ color: 'var(--color-accent)' }}>&gt;</span>
+        <span className="font-bold" style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-display)' }}>
+          roboko
         </span>
-        <span className="badge badge-neutral">{role}</span>
+        <span>--{flag}</span>
+        <span aria-hidden="true" className="term-prompt__cursor" />
       </div>
-      <SignOutButton />
+      <div className="flex items-center gap-2">
+        <span className="badge badge-neutral">{role}</span>
+        <SignOutButton />
+      </div>
     </div>
   )
 }

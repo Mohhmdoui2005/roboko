@@ -51,6 +51,23 @@ interface RpcClient {
 }
 
 /**
+ * Map the queue's internal payload onto the wire.
+ * IndexedDB/rollback track the bare `request_id`, but every Postgres RPC
+ * names the arg `p_request_id` — sending bare `request_id` makes PostgREST
+ * look for `fn(p_match_id, p_team_id, request_id)`, which does not exist
+ * (PGRST202 "Could not find the function … in the schema cache").
+ */
+function toWirePayload(
+  payload: Record<string, unknown>,
+  request_id: string
+): Record<string, unknown> {
+  const { request_id: _dropped, ...rest } = payload
+  void _dropped
+  if (rest.p_request_id == null) rest.p_request_id = request_id
+  return rest
+}
+
+/**
  * Map one queued item back onto the wire during replay.
  * 'sent' = effect achieved (incl. already_processed / duplicate / deduped).
  * 'dead' = server definitively rejected → roll back optimistic UI.
@@ -60,7 +77,7 @@ async function sendItem(
   item: QueuedMutation
 ): Promise<'sent' | 'retry' | 'dead'> {
   try {
-    const { data, error } = await client.rpc(item.endpoint, item.payload as Record<string, unknown>)
+    const { data, error } = await client.rpc(item.endpoint, toWirePayload(item.payload as Record<string, unknown>, item.request_id))
     if (!error) {
       const status = (data as { status?: string } | null)?.status
       // already_processed / duplicate / deduped all mean "effect achieved"
@@ -88,7 +105,7 @@ export async function callRpcQueued<T>(
   }
 
   try {
-    const { data, error } = await client.rpc(endpoint, full)
+    const { data, error } = await client.rpc(endpoint, toWirePayload(full, request_id))
     if (error) throw new Error(error.message, { cause: 'server' })
     return { queued: false, data: data as T }
   } catch (e) {

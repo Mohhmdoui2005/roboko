@@ -65,23 +65,18 @@ export default function LoginPage() {
       style={{ background: 'var(--color-bg)' }}
     >
       <div className="w-full max-w-sm space-y-8">
-        {/* ── Brand mark ── */}
-        <div className="text-center space-y-3">
-          {/* Signal green hexagon icon */}
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-xl"
-               style={{ border: '2px solid var(--color-accent)', background: 'var(--color-surface)' }}>
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-            </svg>
-          </div>
-          <div>
-            <h1 style={{ fontSize: '1.5rem', lineHeight: 1.1, letterSpacing: '-0.02em', color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}>
+        {/* ── Brand mark · Long Document: stacked head, terminal voice ── */}
+        <div className="space-y-3">
+          <p className="term-prompt text-xs" style={{ color: 'var(--color-text-tertiary)' }}>&gt; roboko --signin</p>
+          <div className="section-head">
+            <span className="section-head__label">Staff and participant access</span>
+            <h1 className="section-head__title" style={{ fontSize: '1.5rem' }}>
               Roboko
             </h1>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-tertiary)', marginTop: 4 }}>
-              Sign in to your account
-            </p>
           </div>
+          <p style={{ fontSize: '0.875rem', color: 'var(--color-text-tertiary)', marginTop: 4 }}>
+            Sign in to your account
+          </p>
         </div>
 
         {/* ── Form card ── */}
