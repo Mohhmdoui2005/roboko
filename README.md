@@ -1,36 +1,101 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Roboko Tournament Platform
 
-## Getting Started
+Event operations for a robotics tournament: qualification rounds, knockout bracket,
+jury scoring, test-room sessions, lunch claims, and a public live display — one
+Next.js app backed by Supabase (Postgres + Auth + Realtime).
 
-First, run the development server:
-
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+```
+roboko/
+├── tournament-app/     # the Next.js application (this is the project)
+│   ├── src/app/        # routes per role: admin, orga, jury, participant, live
+│   ├── src/components/ # shared UI (scanner, countdown, bracket, sync badge)
+│   ├── src/lib/        # supabase clients, offline queue, QR, theme
+│   ├── scripts/        # SQL migrations (run in order) + verify/seed scripts
+│   ├── worker/         # service-worker background-sync hook
+│   └── design.md       # locked design system (Terminal + Ember themes)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Roles
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Route | Role | What they do |
+|---|---|---|
+| `/admin/*` | ADMIN | Command center: teams, Phase 1, knockout, leaderboard, lunch, QR codes, test room, users, theme switcher |
+| `/orga/*` | ORGA | Field stations: lunch-badge scanner, robot test-session scanner |
+| `/jury` | JURY | Arena scoring console (locked to their assigned arena) |
+| `/participant` | PARTICIPANT | Test-session countdown, team testing QR, GET READY alerts |
+| `/live`, `/bracket` | public | Venue display: standings or bracket, realtime, no login |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Auth is Supabase Auth; the role lives in `app_metadata.role` (JWT claim, no DB
+lookup). `src/middleware.ts` gates every route by role.
 
-## Learn More
+## Tournament flow
 
-To learn more about Next.js, take a look at the following resources:
+1. **Phase 1 — qualification.** `generate_phase1_matches()` builds 54 matches
+   (36 teams, circle method: 3 opponents each across 3 subphases × 4 arenas).
+   Admin publishes matches; jury scores best-of-4 rounds (`submit_match_round`,
+   round 4 is decisive win/loss only).
+2. **Warnings.** 3 warnings per team **per round** — the 3rd auto-forfeits the
+   current round server-side. Counters reset every recorded round. Jury can
+   also remove warnings (a recorded forfeit stands).
+3. **Knockout.** Top-16 seeds → shuffled → published 15-match bracket
+   (R16 → QF → SF → Final → Champion). Winners advance automatically via
+   trigger; `knockout_live` flips the venue screen.
+4. **Test room.** Orga scans a robot's `ROBOT_TEST` QR → 5-minute session in the
+   least-loaded of Test 1–8. Quota: **2 sessions per team, lifetime** — the 3rd
+   scan is rejected with an exhausted message. Replays dedupe; double-scans
+   never double-book.
+5. **Lunch.** Badges are HMAC-signed `PERSON_LUNCH` payloads. Admin sets the
+   start time + broadcasts; orga scans claim exactly once per person
+   (replays return the original timestamp).
+6. **Live display.** Leaderboard or bracket with exactly 2 Realtime channels,
+   render-dedupe via visible signature, 30 s poll fallback, Wake Lock.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Offline-first
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Jury scoring, warnings, and lunch claims go through an IndexedDB mutation
+queue (`src/lib/queuedRpc.ts`): attempt now when online, enqueue with the same
+`request_id` on failure, replay oldest-first on reconnect. Every critical RPC
+dedupes on `p_request_id`, so retries are at-most-once by construction.
+`SyncBadge` shows pending counts with a manual Retry fallback (iOS has no
+Background Sync).
 
-## Deploy on Vercel
+## Themes
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Two switchable themes, one tap, persisted per browser: **Terminal**
+(dark ops-console, default) and **Ember** (daylight pit-lane custom theme).
+Admin gets a segmented switcher; every other role gets a compact switcher in
+the top bar. System documented in `tournament-app/design.md`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Getting started
+
+```bash
+cd tournament-app
+npm install
+npm run dev        # http://localhost:3000
+```
+
+Copy `.env.local` with `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `QR_SECRET_KEY`.
+
+## Database setup (Supabase SQL editor, in order)
+
+1. `scripts/phase1_setup.sql` — core schema + jury RPCs
+2. `scripts/generate_phase1_matches.sql` — generator + leaderboard
+3. `scripts/lunch_setup.sql` — lunch claims + broadcast
+4. `scripts/knockout_setup.sql` — bracket engine
+5. `scripts/offline_setup.sql` — `request_id` idempotency ledger
+6. `scripts/warning_update.sql` — decrement + 3-warning forfeit + per-round reset
+7. `scripts/testing_setup.sql` — test-room table + session RPCs
+8. `scripts/add_qr_columns.sql` then `node scripts/generate_qrs.js` — QR payloads
+
+Seed staff logins: `node scripts/seed_test_accounts.js`
+(`admin@` / `orga@` / `jury@` / `participant@test.com`, password `Roboko123!`).
+
+Verify (self-cleaning, safe to run): `verify_phase1_matches.js`,
+`verify_knockout.js`, `verify_lunch.js`, `verify_offline.js`,
+`verify_warnings.js`, `verify_testing.js`, `verify_rls.js`.
+
+## Tech
+
+Next.js 16 (App Router) · React 19 · Supabase · TanStack Query · `idb` ·
+`html5-qrcode` / `qrcode.react` · Tailwind v4 · PWA (Workbox).
