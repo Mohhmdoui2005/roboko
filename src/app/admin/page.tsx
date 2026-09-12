@@ -15,13 +15,6 @@ interface MatchRow {
   winner_id: string | null
 }
 
-interface BoardRow {
-  team_id: string
-  team_name?: string
-  wins: number
-  matches_played: number
-}
-
 const NAV = [
   { label: 'Dashboard', href: '/admin', active: true },
   { label: 'Teams', href: '/admin/teams', active: false },
@@ -31,6 +24,7 @@ const NAV = [
   { label: 'Lunch', href: '/admin/lunch', active: false },
   { label: 'QR Codes', href: '/admin/qr-codes', active: false },
   { label: 'Testing', href: '/admin/testing', active: false },
+  { label: 'Users', href: '/admin/users', active: false },
 ]
 
 const TOOLS = [
@@ -41,6 +35,7 @@ const TOOLS = [
   { title: 'Lunch', desc: 'Start time + broadcast', href: '/admin/lunch', icon: '🍽️' },
   { title: 'QR Codes', desc: 'Robot QR grid + print', href: '/admin/qr-codes', icon: '🔳' },
   { title: 'Test Room', desc: 'Arena occupancy + override', href: '/admin/testing', icon: '🤖' },
+  { title: 'Users', desc: 'Accounts, roles + delete', href: '/admin/users', icon: '👥' },
 ]
 
 export default function AdminDashboard() {
@@ -49,11 +44,9 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true)
   const [matches, setMatches] = useState<MatchRow[]>([])
   const [teamCount, setTeamCount] = useState(0)
-  const [teamNames, setTeamNames] = useState<Record<string, string>>({})
   const [knockoutLive, setKnockoutLive] = useState(false)
   const [lunchCount, setLunchCount] = useState<number | null>(null)
   const [activeSessions, setActiveSessions] = useState(0)
-  const [board, setBoard] = useState<BoardRow[]>([])
 
   const fetchAll = useCallback(async () => {
     const [
@@ -62,26 +55,20 @@ export default function AdminDashboard() {
       { data: state },
       { data: lunch },
       { data: sessions },
-      { data: leaders },
     ] = await Promise.all([
       supabase.from('teams').select('id,name'),
       supabase.from('matches').select('id,arena_id,status,is_knockout,team1_id,team2_id,winner_id').limit(500),
       supabase.from('tournament_state').select('knockout_live').limit(1).maybeSingle(),
       supabase.rpc('get_lunch_claim_count'),
       supabase.rpc('get_active_sessions'),
-      supabase.rpc('get_phase1_leaderboard'),
     ])
     if (teams) {
       setTeamCount(teams.length)
-      const map: Record<string, string> = {}
-      teams.forEach((t: { id: string; name: string }) => { map[t.id] = t.name })
-      setTeamNames(map)
     }
     if (mData) setMatches(mData as MatchRow[])
     if (state) setKnockoutLive(Boolean((state as { knockout_live?: boolean }).knockout_live))
     if (typeof lunch === 'number') setLunchCount(lunch)
     if (Array.isArray(sessions)) setActiveSessions(sessions.length)
-    if (Array.isArray(leaders)) setBoard((leaders as BoardRow[]).slice(0, 3))
     setLoading(false)
     // eslint-disable-next-line react-hooks/set-state-in-effect
   }, [supabase])
@@ -111,30 +98,11 @@ export default function AdminDashboard() {
     }
   }, [matches])
 
-  const arenaBars = useMemo(() => {
-    const arenas = ['Arena A', 'Arena B', 'Arena C', 'Arena D']
-    const bars = arenas.map(a => ({
-      label: a.replace('Arena ', 'A'),
-      value: matches.filter(m => !m.is_knockout && m.arena_id === a).length,
-    }))
-    bars.push(
-      { label: 'KO', value: stats.koTotal },
-      { label: 'Teams', value: teamCount },
-      { label: 'Lunch', value: lunchCount ?? 0 },
-    )
-    const max = Math.max(1, ...bars.map(b => b.value))
-    return bars.map(b => ({ ...b, h: Math.round((b.value / max) * 100) }))
-  }, [matches, stats.koTotal, teamCount, lunchCount])
-
-  const recent = useMemo(() => {
-    const done = matches.filter(m => m.status === 'COMPLETED').slice(-5).reverse()
-    const fallback = matches.slice(-5).reverse()
-    return (done.length > 0 ? done : fallback).slice(0, 5)
-  }, [matches])
-
-  const nameOf = (id: string | null) => (id ? teamNames[id] ?? id.slice(0, 8) : '—')
   const emailPrefix = user?.email?.split('@')[0] ?? 'Admin'
   const displayName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1)
+
+  const total = stats.qualTotal + stats.koTotal
+  const done = stats.qualCompleted + stats.koCompleted
 
   if (authLoading || loading) {
     return (
@@ -153,209 +121,176 @@ export default function AdminDashboard() {
     )
   }
 
-  const pill: React.CSSProperties = {
-    background: 'var(--color-surface)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 9999,
-  }
-  const card: React.CSSProperties = {
-    background: 'var(--color-surface)',
-    border: '1px solid var(--color-border)',
-    borderRadius: 24,
-  }
-
   return (
-    <div className="min-h-screen p-3 sm:p-5 lg:p-7" style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}>
-      <div className="max-w-[1440px] mx-auto flex flex-col gap-6">
+    <div className="min-h-screen p-3 sm:p-5 lg:p-6"
+      style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}>
+      <div className="w-full max-w-[1560px] mx-auto flex flex-col lg:flex-row gap-5">
 
-        {/* ── Top navigation ── */}
-        <header className="w-full flex items-center justify-between gap-4 py-2 px-1">
-          <div className="flex items-center gap-2.5">
-            <div className="inline-flex items-center justify-center w-7 h-7 rounded-lg"
-              style={{ border: '2px solid var(--color-accent)', background: 'var(--color-surface)' }}>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-              </svg>
+        {/* ── Sidebar ── */}
+        <aside className="hidden lg:flex w-64 shrink-0 flex-col justify-between rounded-[24px] p-5"
+          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+          <div className="space-y-6">
+            <div className="flex items-center gap-2.5 px-2">
+              <div className="inline-flex items-center justify-center w-8 h-8 rounded-xl"
+                style={{ border: '2px solid var(--color-accent)', background: 'var(--color-bg)' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+              </div>
+              <span className="text-xl font-bold tracking-tight"
+                style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}>Roboko</span>
             </div>
-            <span className="text-xl font-bold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>Roboko</span>
-            <span className="badge badge-neutral hidden sm:inline-flex">ADMIN</span>
+
+            <div className="flex items-center gap-2.5 rounded-2xl p-2.5"
+              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
+              <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold"
+                style={{ background: 'var(--color-accent)', color: '#04110b' }}>
+                {displayName.charAt(0).toUpperCase()}
+              </div>
+              <div>
+                <p className="text-xs font-semibold leading-tight" style={{ color: 'var(--color-text-primary)' }}>
+                  Hello, {displayName}
+                </p>
+                <p className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>Admin account</p>
+              </div>
+            </div>
+
+            <nav aria-label="Admin sections" className="space-y-1">
+              <p className="text-[11px] font-semibold uppercase px-3 pb-1"
+                style={{ color: 'var(--color-text-tertiary)', letterSpacing: '0.08em' }}>Command</p>
+              {NAV.map(n => (
+                <Link key={n.label} href={n.href}
+                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                  style={n.active
+                    ? { background: 'var(--color-raised)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }
+                    : { color: 'var(--color-text-tertiary)', border: '1px solid transparent' }}>
+                  {n.label}
+                </Link>
+              ))}
+            </nav>
           </div>
-          <nav className="hidden md:flex items-center gap-1.5 p-1 rounded-full px-2" style={pill}>
-            {NAV.map(n => (
-              <Link key={n.label} href={n.href}
-                className="px-4 py-1.5 rounded-full text-xs font-medium tracking-wide transition"
-                style={n.active
-                  ? { background: 'var(--color-border)', color: 'var(--color-text-primary)' }
-                  : { color: 'var(--color-text-tertiary)' }}>
-                {n.label}
+
+          <div className="mt-6 rounded-2xl p-4 text-center"
+            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-accent)' }}>
+            <p className="text-xs font-bold" style={{ color: knockoutLive ? 'var(--color-accent-text)' : 'var(--color-info)' }}>
+              {knockoutLive ? '● KNOCKOUT LIVE' : '◌ QUALIFICATION'}
+            </p>
+            <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
+              {done}/{total} done · lunch {lunchCount ?? '…'} · testing {activeSessions}
+            </p>
+            <Link href="/live" className="btn w-full mt-3" style={{ minHeight: 40, fontSize: '0.8rem' }}>
+              Open live screen ↗
+            </Link>
+          </div>
+        </aside>
+
+        {/* ── Main workspace ── */}
+        <main className="flex-1 flex flex-col gap-5 min-w-0">
+          <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-bold tracking-tight"
+                style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}>
+                Command Center
+              </h1>
+              <p className="text-xs mt-0.5" style={{ color: 'var(--color-text-tertiary)' }}>
+                Tournament status and every admin tool.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Link href="/live" className="btn" style={{ minHeight: 40, fontSize: '0.8rem' }}>Live screen</Link>
+              <Link href="/bracket" className="btn" style={{ minHeight: 40, fontSize: '0.8rem' }}>Bracket</Link>
+              <button onClick={fetchAll} className="btn btn-primary" style={{ minHeight: 40, fontSize: '0.8rem' }}>↻ Refresh</button>
+            </div>
+          </header>
+
+          {/* ── Row 1: status ── */}
+          <section className="grid grid-cols-1 md:grid-cols-12 gap-5">
+            <div className="md:col-span-12 rounded-[24px] p-6 flex flex-col justify-between relative overflow-hidden min-h-[210px]"
+              style={{ background: 'linear-gradient(135deg, #7cf03d 0%, #46cf23 45%, #229916 100%)', color: '#000' }}>
+              <div style={{
+                position: 'absolute', width: 240, height: 240, borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0) 70%)',
+                top: -60, right: -40, pointerEvents: 'none',
+              }} />
+              <div style={{
+                position: 'absolute', width: 300, height: 300, borderRadius: '40%',
+                border: '30px solid rgba(255,255,255,0.22)',
+                bottom: -160, right: -70, transform: 'rotate(25deg)', pointerEvents: 'none',
+              }} />
+              <div className="flex items-center justify-between relative">
+                <span className="text-xs font-bold uppercase" style={{ letterSpacing: '0.08em', color: '#000' }}>
+                  Tournament Status
+                </span>
+                <span className="text-xs font-bold px-2.5 py-1 rounded-full"
+                  style={{ background: '#fff', color: '#000' }}>
+                  {total} matches
+                </span>
+              </div>
+              <div className="my-2 relative">
+                <div className="flex items-baseline gap-1.5" style={{ fontFamily: 'var(--font-heading)', color: '#000' }}>
+                  <span className="text-4xl font-bold tracking-tight" style={{ color: '#000' }}>{done}</span>
+                  <span className="text-lg font-semibold" style={{ color: '#000' }}>/ {total} done</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-2.5 pt-1 relative">
+                <Link href="/admin/phase1" className="flex-1 text-center font-semibold text-xs py-2.5 px-3 rounded-full"
+                  style={{ background: '#fff', color: '#000', textDecoration: 'none' }}>
+                  Phase 1 · {stats.qualPending} pending
+                </Link>
+                <Link href="/admin/knockout" className="flex-1 text-center font-semibold text-xs py-2.5 px-3 rounded-full"
+                  style={{ background: '#fff', color: '#000', textDecoration: 'none' }}>
+                  Knockout · {stats.koTotal || 'setup'}
+                </Link>
+              </div>
+            </div>
+          </section>
+
+          {/* ── Row 2: ops + control center, side by side ── */}
+          <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            <div className="lg:col-span-6 rounded-[24px] p-5 flex flex-col justify-between"
+              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>Ops</h3>
+                <span className="text-xs font-semibold" style={{ color: 'var(--color-text-tertiary)' }}>Live counts</span>
+              </div>
+              <p className="text-center text-[11px] font-medium mb-3" style={{ color: 'var(--color-text-tertiary)' }}>
+                Meals claimed
+              </p>
+              <p className="text-center font-bold leading-none"
+                style={{ fontSize: '2.5rem', color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}>
+                {lunchCount ?? '…'}
+              </p>
+              <div className="space-y-1.5 text-[11px] pt-3 mt-3"
+                style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-text-tertiary)' }}>
+                <div className="flex items-center justify-between">
+                  <span>Testing active</span>
+                  <span className="font-bold" style={{ color: 'var(--color-text-primary)' }}>{activeSessions}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Teams</span>
+                  <span className="font-bold" style={{ color: 'var(--color-text-primary)' }}>{teamCount}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Qual pending</span>
+                  <span className="font-bold" style={{ color: 'var(--color-text-primary)' }}>{stats.qualPending}</span>
+                </div>
+              </div>
+              <Link href="/admin/lunch" className="btn w-full mt-4" style={{ minHeight: 40, fontSize: '0.8rem' }}>
+                Open lunch control
               </Link>
-            ))}
-          </nav>
-          <div className="flex items-center gap-3">
-            <span className={`badge ${knockoutLive ? 'badge-success' : 'badge-info'}`}>
-              {knockoutLive ? '● KNOCKOUT LIVE' : 'QUALIFICATION'}
-            </span>
-            <div className="w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm"
-              style={{ background: 'var(--color-border)', color: 'var(--color-text-primary)' }}>
-              {displayName.charAt(0).toUpperCase()}
-            </div>
-          </div>
-        </header>
-
-        {/* ── Greeting + controls ── */}
-        <section className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 py-1">
-          <h1 className="text-2xl lg:text-3xl font-normal" style={{ color: 'var(--color-text-primary)' }}>
-            Hello, {displayName}
-          </h1>
-          <div className="flex items-center gap-2">
-            <Link href="/live" className="btn" style={{ minHeight: 40 }}>Live screen</Link>
-            <Link href="/bracket" className="btn" style={{ minHeight: 40 }}>Bracket</Link>
-            <button onClick={fetchAll} className="btn btn-primary" style={{ minHeight: 40 }}>Refresh</button>
-          </div>
-        </section>
-
-        {/* ── Grid ── */}
-        <main className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
-          <div className="lg:col-span-8 flex flex-col gap-5">
-
-            <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
-              {/* Tournament status — Total Balance analogue */}
-              <section className="md:col-span-7 p-6 flex flex-col justify-between" style={card}>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Tournament Status</span>
-                    <span className="badge badge-neutral">{stats.qualTotal + stats.koTotal} matches</span>
-                  </div>
-                  <div className="mt-2 text-3xl font-semibold tracking-tight" style={{ color: 'var(--color-text-primary)' }}>
-                    {stats.qualCompleted + stats.koCompleted}
-                    <span className="text-2xl font-light" style={{ color: 'var(--color-text-tertiary)' }}> / {stats.qualTotal + stats.koTotal} done</span>
-                  </div>
-                  {/* Capsule nodes */}
-                  <div className="relative mt-8 mb-6 py-2 px-1 flex items-center justify-between">
-                    <div className="absolute left-8 right-8 top-1/2 -translate-y-1/2 h-[38px] rounded-full z-0"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                    <div className="relative z-10 w-20 h-20 rounded-full flex flex-col items-center justify-center text-center"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                      <span className="text-xs font-semibold" style={{ color: 'var(--color-text-primary)' }}>{stats.qualCompleted}</span>
-                      <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>Qual done</span>
-                    </div>
-                    <div className="relative z-20 w-24 h-24 rounded-full flex flex-col items-center justify-center text-center"
-                      style={{
-                        background: 'var(--color-accent)', color: '#04110b',
-                        boxShadow: '0 0 20px -3px rgba(0,217,146,0.4)',
-                      }}>
-                      <span className="text-sm font-bold">{knockoutLive ? stats.koLive : stats.qualInProgress + stats.qualPublished}</span>
-                      <span className="text-[11px] font-medium">{knockoutLive ? 'Knockout' : 'Live now'}</span>
-                    </div>
-                    <div className="relative z-10 w-20 h-20 rounded-full flex flex-col items-center justify-center text-center"
-                      style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                      <span className="text-xs font-semibold" style={{ color: 'var(--color-text-primary)' }}>{teamCount}</span>
-                      <span className="text-[10px]" style={{ color: 'var(--color-text-tertiary)' }}>Teams</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-3 mt-4 pt-2">
-                  <Link href="/admin/phase1" className="btn btn-primary" style={{ textDecoration: 'none' }}>Phase 1 · {stats.qualPending} pending</Link>
-                  <Link href="/admin/knockout" className="btn" style={{ textDecoration: 'none' }}>Knockout · {stats.koTotal || 'setup'}</Link>
-                </div>
-              </section>
-
-              {/* Top teams — Investments analogue */}
-              <section className="md:col-span-5 p-6 flex flex-col justify-between" style={card}>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Top Teams</h3>
-                    <Link href="/admin/leaderboard" className="badge badge-info" style={{ textDecoration: 'none' }}>Leaderboard ↗</Link>
-                  </div>
-                  <div className="mt-4 flex flex-col gap-2.5">
-                    {board.length === 0 && (
-                      <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>No standings yet — generate Phase 1 first.</p>
-                    )}
-                    {board.map((r, i) => (
-                      <div key={r.team_id}
-                        className="flex items-center justify-between p-3 rounded-2xl"
-                        style={i === 0
-                          ? { background: 'var(--color-accent)', color: '#04110b', boxShadow: '0 0 20px -3px rgba(0,217,146,0.4)' }
-                          : { background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-                            style={i === 0 ? { background: 'rgba(0,0,0,0.85)', color: 'var(--color-accent)' } : { background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}>
-                            {i + 1}
-                          </div>
-                          <div>
-                            <div className="text-xs font-bold" style={{ color: i === 0 ? '#04110b' : 'var(--color-text-primary)' }}>
-                              {r.team_name ?? teamNames[r.team_id] ?? r.team_id.slice(0, 8)}
-                            </div>
-                            <div className="text-[10px]" style={{ color: i === 0 ? 'rgba(0,0,0,0.7)' : 'var(--color-text-tertiary)' }}>
-                              {r.matches_played} played
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-xs font-bold" style={{ color: i === 0 ? '#04110b' : 'var(--color-accent-text)' }}>{r.wins}W</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="mt-4 flex gap-2 text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>
-                  <span className="badge badge-neutral">Lunch {lunchCount ?? '…'} claimed</span>
-                  <span className="badge badge-neutral">Testing {activeSessions} active</span>
-                </div>
-              </section>
             </div>
 
-            {/* Match flow — Cashflow analogue */}
-            <section className="p-6 flex flex-col justify-between" style={card}>
+            <div className="lg:col-span-6 rounded-[24px] p-6 flex flex-col justify-between"
+              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
               <div className="flex items-center justify-between">
-                <div>
-                  <span className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Match Flow</span>
-                  <div className="mt-1 text-2xl font-semibold" style={{ color: 'var(--color-text-primary)' }}>
-                    {stats.qualTotal} qual · {stats.koTotal} KO
-                  </div>
-                </div>
-                <span className="badge badge-neutral">per arena + ops</span>
-              </div>
-              <div className="mt-8 relative pt-8 pb-2">
-                <div className="pl-8 flex flex-col justify-between h-36" style={{ borderBottom: '1px solid var(--color-border)' }}>
-                  <div className="w-full" style={{ borderBottom: '1px dashed var(--color-border)' }} />
-                  <div className="w-full" style={{ borderBottom: '1px dashed var(--color-border)' }} />
-                  <div className="w-full" style={{ borderBottom: '1px dashed var(--color-border)' }} />
-                </div>
-                <div className="absolute inset-x-0 bottom-0 pl-10 pr-4 h-36 flex items-end justify-between gap-3">
-                  {arenaBars.map((b, i) => (
-                    <div key={b.label} className="relative flex flex-col items-center flex-1">
-                      {i === 0 && (
-                        <div className="absolute -top-7 px-2.5 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap"
-                          style={{ background: 'var(--color-bg)', border: '1px solid var(--color-accent)', color: 'var(--color-accent-text)' }}>
-                          {b.value}
-                        </div>
-                      )}
-                      <div className="w-8 rounded-2xl flex items-center justify-center"
-                        style={i === 0
-                          ? { height: `${Math.max(12, b.h)}%`, minHeight: 48, background: 'linear-gradient(to top, rgba(0,217,146,0.4), var(--color-accent))' }
-                          : { height: `${Math.max(8, b.h)}%`, minHeight: 24, background: 'var(--color-bg)', border: '1px solid var(--color-border)' }} />
-                      <span className="text-[10px] mt-1 font-mono" style={{ color: 'var(--color-text-tertiary)' }}>{b.label}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </section>
-          </div>
-
-          {/* ── Right column ── */}
-          <div className="lg:col-span-4 flex flex-col gap-5">
-            {/* Control center — AI Assistant analogue */}
-            <section className="p-6 flex flex-col justify-between" style={card}>
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>✦ Control Center</h3>
+                <h3 className="font-bold text-base" style={{ color: 'var(--color-text-primary)' }}>✦ Control Center</h3>
                 <span className="badge badge-success">OPERATIONAL</span>
               </div>
-              <p className="text-xs mt-2" style={{ color: 'var(--color-text-tertiary)' }}>Every admin tool — one tap.</p>
-              <div className="grid grid-cols-1 gap-2 mt-4">
+              <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>Every admin tool — one tap.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
                 {TOOLS.map(t => (
                   <Link key={t.title} href={t.href}
-                    className="flex items-center justify-between p-3 rounded-2xl transition"
+                    className="flex items-center justify-between p-3 rounded-2xl transition-colors"
                     style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', textDecoration: 'none' }}>
                     <span className="flex items-center gap-3">
                       <span style={{ fontSize: '1.1rem' }}>{t.icon}</span>
@@ -368,38 +303,8 @@ export default function AdminDashboard() {
                   </Link>
                 ))}
               </div>
-            </section>
-
-            {/* Recent activity — Transactions analogue */}
-            <section className="p-6 flex flex-col flex-1 justify-between" style={card}>
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium" style={{ color: 'var(--color-text-primary)' }}>Recent Matches</h3>
-                <Link href="/admin/phase1" className="badge badge-neutral" style={{ textDecoration: 'none' }}>View all ↗</Link>
-              </div>
-              <div className="flex flex-col" style={{ borderTop: '1px solid var(--color-border)' }}>
-                {recent.length === 0 && (
-                  <p className="text-xs py-4" style={{ color: 'var(--color-text-tertiary)' }}>No matches yet.</p>
-                )}
-                {recent.map(m => (
-                  <div key={m.id} className="py-2.5 flex items-center justify-between"
-                    style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <div className="flex items-center gap-3">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold"
-                        style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text-primary)' }}>
-                        {m.is_knockout ? 'KO' : m.arena_id.replace('Arena ', 'A')}
-                      </div>
-                      <div className="text-xs" style={{ color: 'var(--color-text-primary)' }}>
-                        {nameOf(m.team1_id)} <span style={{ color: 'var(--color-text-tertiary)' }}>vs</span> {nameOf(m.team2_id)}
-                      </div>
-                    </div>
-                    <span className={`badge ${m.status === 'COMPLETED' ? 'badge-success' : m.status === 'IN_PROGRESS' ? 'badge-warning' : m.status === 'PUBLISHED' ? 'badge-info' : 'badge-neutral'}`}>
-                      {m.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          </div>
+            </div>
+          </section>
         </main>
       </div>
     </div>

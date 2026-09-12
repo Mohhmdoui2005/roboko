@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { adminFetch } from '@/lib/adminApi'
 import { useAuth } from '@/components/AuthProvider'
 
 interface Match {
@@ -164,10 +165,8 @@ export default function AdminPhase1Dashboard() {
     )) return
     setCreatingAccounts(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const res = await fetch('/api/admin/create-team-accounts', {
+      const res = await adminFetch(supabase, '/api/admin/create-team-accounts', {
         method: 'POST',
-        headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
       })
       const json = await res.json()
       if (!res.ok) {
@@ -235,7 +234,7 @@ export default function AdminPhase1Dashboard() {
       for (const [me, other] of [[m.team1_id, m.team2_id], [m.team2_id, m.team1_id]] as const) {
         if (!me || !other) continue
         counts[me] = (counts[me] ?? 0) + 1
-        ;(opps[me] ??= new Set()).add(other)
+          ; (opps[me] ??= new Set()).add(other)
       }
     }
     const vals = Object.values(counts)
@@ -331,9 +330,9 @@ export default function AdminPhase1Dashboard() {
 
         {/* ── Verification (acceptance criterion #1) ── */}
         <div className="card p-6 space-y-4" style={{ borderColor: 'var(--color-accent)' }}>
-          <h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-accent)', margin: 0 }}>
+          {/*<h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-accent)', margin: 0 }}>
             Verification — 54 matches, zero repeats, 3 per team
-          </h3>
+          </h3>*/}
           <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
             <div className="p-4" style={{ background: 'var(--color-bg)', borderRadius: 8 }}>
               <p style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', margin: '0 0 4px' }}>TOTAL MATCHES</p>

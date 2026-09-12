@@ -8,9 +8,14 @@ import Countdown from '@/components/Countdown'
 
 interface Profile {
   id: string
-  full_name?: string
-  lunch_qr_payload?: string
-  lunch_claimed?: boolean
+  name?: string
+  team_id?: string | null
+}
+
+interface TeamRobot {
+  id: string
+  name: string
+  qr_payload: string | null
 }
 
 interface ActiveSession {
@@ -35,19 +40,20 @@ export default function ParticipantDashboard() {
   const [activeSession, setActiveSession] = useState<ActiveSession | null>(null)
   const [teamNotifs, setTeamNotifs] = useState<TeamNotification[]>([])
   const [dismissedNotifs, setDismissedNotifs] = useState<Set<string>>(new Set())
-  const [lunchClaimedAt, setLunchClaimedAt] = useState<string | null>(null)
+  const [robots, setRobots] = useState<TeamRobot[]>([])
+  const [loadingRobots, setLoadingRobots] = useState(true)
   // offsetMs: Date.now() − serverNow — corrects for device clock drift
   const [offsetMs, setOffsetMs] = useState(0)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const notifPollRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const supabase = createClient()
 
-  // ── Load profile once ─────────────────────────────────────────────────────
+  // ── Load profile once (real columns: id, name, team_id) ──────────────────
   const loadProfile = useCallback(async () => {
     if (!user) return
     const { data } = await supabase
       .from('profiles')
-      .select('id, full_name, lunch_qr_payload, lunch_claimed')
+      .select('id, name, team_id')
       .eq('id', user.id)
       .single()
     if (data) setProfile(data)
@@ -73,17 +79,21 @@ export default function ParticipantDashboard() {
     setActiveSession(data ?? null)
   }, [supabase])
 
-  // ── Own lunch claim row: flip badge to Claimed once scanned ──────────────
-  // Polled on the same 10 s tick as team notifications (no extra timer).
-  const fetchLunchClaim = useCallback(async () => {
-    if (!user) return
+  // ── Team robot(s): their ROBOT_TEST QR is what the test room scans ───────
+  const fetchRobots = useCallback(async (tid: string | null | undefined) => {
+    if (!tid) {
+      setRobots([])
+      setLoadingRobots(false)
+      return
+    }
     const { data } = await supabase
-      .from('lunch_claims')
-      .select('claimed_at')
-      .eq('user_id', user.id)
-      .maybeSingle()
-    setLunchClaimedAt(data?.claimed_at ?? null)
-  }, [supabase, user])
+      .from('robots')
+      .select('id,name,qr_payload')
+      .eq('team_id', tid)
+      .order('name')
+    if (data) setRobots(data as TeamRobot[])
+    setLoadingRobots(false)
+  }, [supabase])
 
   // ── GET READY alerts: poll notifications for MY team every 10 s ───────────
   // Server trigger fires on round-2 submit of the preceding arena match, so
@@ -109,16 +119,21 @@ export default function ParticipantDashboard() {
     syncServerTime()
     fetchActiveSession()
     fetchTeamNotifs()
-    fetchLunchClaim()
 
     // 10 000 ms polling — intentionally no Supabase realtime subscription
     pollRef.current = setInterval(fetchActiveSession, 10000)
-    notifPollRef.current = setInterval(() => { fetchTeamNotifs(); fetchLunchClaim() }, 10000)
+    notifPollRef.current = setInterval(fetchTeamNotifs, 10000)
     return () => {
       if (pollRef.current) clearInterval(pollRef.current)
       if (notifPollRef.current) clearInterval(notifPollRef.current)
     }
-  }, [user, isLoading, loadProfile, syncServerTime, fetchActiveSession, fetchTeamNotifs, fetchLunchClaim])
+  }, [user, isLoading, loadProfile, syncServerTime, fetchActiveSession, fetchTeamNotifs])
+
+  // Robots load once the team is known (profile row first, JWT fallback).
+  const profileTeamId = profile?.team_id ?? null
+  useEffect(() => {
+    fetchRobots(profileTeamId ?? teamId)
+  }, [profileTeamId, teamId, fetchRobots])
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -144,7 +159,6 @@ export default function ParticipantDashboard() {
     )
   }
 
-  const qrPayload = profile?.lunch_qr_payload
   const visibleNotif = teamNotifs.find(n => !dismissedNotifs.has(n.id)) ?? null
 
   return (
@@ -172,7 +186,7 @@ export default function ParticipantDashboard() {
             Participant Dashboard
           </h1>
           <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginTop: 6 }}>
-            Welcome, {profile?.full_name || user.email}!
+            Welcome, {profile?.name || user.email}!
           </p>
         </div>
 
@@ -247,65 +261,77 @@ export default function ParticipantDashboard() {
           )}
         </div>
 
-        {/* ── Lunch QR Code ── */}
-        <div className="card p-6 flex flex-col md:flex-row items-center gap-6">
-          <div
-            style={{
-              padding: '0.75rem',
-              background: '#ffffff',
-              borderRadius: 8,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}
-          >
-            {qrPayload ? (
-              <QRCodeSVG value={qrPayload} size={160} level="H" includeMargin={false} />
-            ) : (
-              <div
-                style={{
-                  width: 160,
-                  height: 160,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  fontSize: '0.75rem',
-                  color: '#666',
-                  border: '1px dashed #ccc',
-                  borderRadius: 4,
-                  padding: 8
-                }}
-              >
-                Lunch QR not generated yet.
-              </div>
-            )}
+        {/* ── Team Testing QR Code ── */}
+        <div className="card p-6 space-y-5">
+          <div className="text-center md:text-left">
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+              <span className="badge badge-info">
+                ROBOT_TEST
+              </span>
+            </div>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text-primary)', margin: '8px 0 0' }}>
+              Team Testing QR Code
+            </h2>
+            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.5, margin: '6px 0 0' }}>
+              Show this at the test room — orga scans it to start your test session.
+            </p>
           </div>
 
-          <div className="space-y-3 text-center md:text-left flex-1">
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-              <span className="badge badge-warning">
-                Meal Voucher
-              </span>
-              {(lunchClaimedAt || profile?.lunch_claimed) && (
-                <span className="badge badge-success">
-                  ✓ Claimed{lunchClaimedAt ? ` ${new Date(lunchClaimedAt).toLocaleTimeString()}` : ''}
-                </span>
-              )}
+          {loadingRobots ? (
+            <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+              Loading team QR…
             </div>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>
-              Participant Lunch QR Code
-            </h2>
-            <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', lineHeight: 1.5 }}>
-              {lunchClaimedAt || profile?.lunch_claimed
-                ? 'Lunch redeemed — enjoy your meal!'
-                : 'Present this scannable badge at the catering station to redeem your lunch.'}
-            </p>
-            <p style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)', margin: 0 }}>
-              claim status refreshes every 10 s
-            </p>
-          </div>
+          ) : robots.length === 0 ? (
+            <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+              No robot linked to your team yet — ask an admin.
+            </div>
+          ) : (
+            robots.map((robot) => (
+              <div key={robot.id} className="flex flex-col md:flex-row items-center gap-6">
+                <div
+                  style={{
+                    padding: '0.75rem',
+                    background: '#ffffff',
+                    borderRadius: 8,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}
+                >
+                  {robot.qr_payload ? (
+                    <QRCodeSVG value={robot.qr_payload} size={160} level="H" includeMargin={false} />
+                  ) : (
+                    <div
+                      style={{
+                        width: 160,
+                        height: 160,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        fontSize: '0.75rem',
+                        color: '#666',
+                        border: '1px dashed #ccc',
+                        borderRadius: 4,
+                        padding: 8
+                      }}
+                    >
+                      QR not generated for this robot yet.
+                    </div>
+                  )}
+                </div>
+                <div className="space-y-2 text-center md:text-left flex-1">
+                  <p style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-primary)', margin: 0 }}>
+                    {robot.name}
+                  </p>
+                  <p style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)', margin: 0 }}>
+                    scanned by orga to open /orga/testing sessions
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

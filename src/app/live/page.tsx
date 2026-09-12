@@ -183,7 +183,7 @@ export default function LivePage() {
       <style>{`@keyframes live-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }`}</style>
 
       <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between gap-4 pb-4"
+        <div className="surface-grid flex items-center justify-between gap-4 px-4 py-4 -mx-4 sm:-mx-8"
           style={{ borderBottom: '1px solid var(--color-border)' }}>
           <div>
             <h1 style={{ fontSize: '2rem', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
