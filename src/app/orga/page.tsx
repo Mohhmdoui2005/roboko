@@ -1,5 +1,6 @@
 import Link from 'next/link'
 
+// Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 export default function Page() {
   return (
     <div className="min-h-screen p-5" style={{ background: 'var(--color-bg)' }}>
@@ -13,9 +14,9 @@ export default function Page() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-7 gap-4">
           {/* Lunch */}
-          <div className="card card-emphasized p-6 flex flex-col gap-4">
+          <div className="card card-emphasized p-6 flex flex-col gap-4 sm:col-span-4">
             <p className="term-prompt text-xs" style={{ color: 'var(--color-text-tertiary)' }}>&gt; roboko --station lunch</p>
             <div>
               <h2 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>
@@ -31,7 +32,7 @@ export default function Page() {
           </div>
 
           {/* Testing */}
-          <div className="card card-emphasized p-6 flex flex-col gap-4">
+          <div className="card card-emphasized p-6 flex flex-col gap-4 sm:col-span-3">
             <p className="term-prompt text-xs" style={{ color: 'var(--color-text-tertiary)' }}>&gt; roboko --station testing</p>
             <div>
               <h2 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0, color: 'var(--color-text-primary)' }}>

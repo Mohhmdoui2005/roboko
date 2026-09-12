@@ -1,4 +1,5 @@
 'use client'
+// Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
@@ -135,7 +136,7 @@ export default function OrgaLunchPage() {
             </p>
           </div>
           <button className="btn btn-primary" onClick={() => setScannerOpen(true)}>
-            📷 Open scanner
+            Open scanner
           </button>
         </div>
 
@@ -146,11 +147,11 @@ export default function OrgaLunchPage() {
         })} />
 
         {/* Claimed count */}
-        <div className="card p-6 text-center">
+        <div className="card p-6 text-left">
           <p style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)', margin: 0 }}>
             Meals claimed
           </p>
-          <p style={{ fontSize: '3rem', fontWeight: 700, fontFamily: 'var(--font-mono)', margin: 0 }}>
+          <p style={{ fontSize: '3rem', fontWeight: 700, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', margin: 0 }}>
             {count ?? '…'}
           </p>
         </div>
@@ -188,7 +189,7 @@ export default function OrgaLunchPage() {
             display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
             gap: 12, padding: 24, textAlign: 'center', cursor: 'pointer',
             background: flash.kind === 'success' ? 'var(--color-success)' : 'var(--color-danger)',
-            color: '#04110b',
+            color: 'var(--color-accent-ink)',
           }} role="alert">
           <p style={{ fontSize: '2.5rem', fontWeight: 800, margin: 0, color: 'inherit' }}>{flash.title}</p>
           <p style={{ fontSize: '1.15rem', fontWeight: 600, margin: 0, color: 'inherit' }}>{flash.detail}</p>

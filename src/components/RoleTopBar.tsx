@@ -3,7 +3,7 @@
 import SignOutButton from '@/components/SignOutButton'
 
 // N8 Terminal command nav — `> roboko --<role>▮`. Same ownership/props, new voice.
-// Hallmark · genre: atmospheric · macrostructure: Bento Grid · design-system: design.md · designed-as-app
+// Hallmark · nav: N8 Terminal command · genre: atmospheric · theme: Terminal · design-system: design.md · designed-as-app
 export default function RoleTopBar({ role }: { role: string }) {
   const flag = role.toLowerCase().replace(/[^a-z0-9]+/g, '-')
   return (
@@ -15,7 +15,8 @@ export default function RoleTopBar({ role }: { role: string }) {
         borderBottom: '1px solid var(--color-border)',
       }}
     >
-      <div className="term-prompt flex items-center gap-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
+      <div className="term-prompt flex items-center gap-2 text-sm min-w-0"
+        style={{ color: 'var(--color-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         <span aria-hidden="true" style={{ color: 'var(--color-accent)' }}>&gt;</span>
         <span className="font-bold" style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-display)' }}>
           roboko

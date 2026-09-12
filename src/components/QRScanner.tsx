@@ -151,10 +151,10 @@ export default function QRScanner({
           <button
             onClick={async () => { await stopScanner(); onClose() }}
             className="btn"
-            style={{ minHeight: 40, minWidth: 40, padding: '0 0.625rem', fontSize: '1rem', border: 'none' }}
+            style={{ minHeight: 48, minWidth: 48, padding: '0 0.625rem', fontSize: '1rem', border: 'none' }}
             aria-label="Close scanner"
           >
-            ✕
+            ×
           </button>
         </div>
 
@@ -167,21 +167,21 @@ export default function QRScanner({
         {/* Permission / error states (overlay below the viewport) */}
         {status === 'requesting' && (
           <p style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--color-text-secondary)', padding: '1rem' }}>
-            📷 Requesting camera access… please tap <strong>Allow</strong> in the browser prompt.
+            Requesting camera access… please tap <strong>Allow</strong> in the browser prompt.
           </p>
         )}
 
         {status === 'denied' && (
           <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
             <p style={{ fontWeight: 600, color: 'var(--color-text-primary)', margin: '0 0 0.5rem' }}>
-              🚫 Camera access was denied
+              <span className="font-mono" style={{ color: 'var(--color-danger)' }}>ERR</span> — Camera access was denied
             </p>
             <p style={{ margin: '0 0 0.75rem' }}>
-              Tap the <strong>🔒 lock icon</strong> in the address bar → Permissions → Camera → <strong>Allow</strong>,
+              Tap the <strong>lock icon</strong> in the address bar → Permissions → Camera → <strong>Allow</strong>,
               then retry. (Chrome Android: ⋮ → Settings → Site settings → Camera.)
             </p>
             <button className="btn btn-primary" onClick={() => requestPermissionAndStart()}>
-              📷 Enable camera &amp; retry
+              Enable camera &amp; retry
             </button>
           </div>
         )}
@@ -189,7 +189,7 @@ export default function QRScanner({
         {status === 'insecure' && (
           <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
             <p style={{ fontWeight: 600, color: 'var(--color-text-primary)', margin: '0 0 0.5rem' }}>
-              🔒 Camera is blocked on plain http://
+              <span className="font-mono" style={{ color: 'var(--color-warning)' }}>BLOCKED</span> — Camera is blocked on plain http://
             </p>
             <p style={{ margin: '0 0 0.75rem' }}>
               Chrome only allows the camera on <strong>https://</strong> or localhost — never on
@@ -199,7 +199,7 @@ export default function QRScanner({
               relaunch Chrome and retry.
             </p>
             <button className="btn btn-primary" onClick={() => requestPermissionAndStart()}>
-              ↻ Retry camera
+              Retry camera
             </button>
           </div>
         )}
@@ -207,7 +207,7 @@ export default function QRScanner({
         {status === 'no-camera' && (
           <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
             <p style={{ fontWeight: 600, color: 'var(--color-text-primary)', margin: '0 0 0.5rem' }}>
-              📵 No camera found on this device
+              <span className="font-mono" style={{ color: 'var(--color-text-tertiary)' }}>NONE</span> — No camera found on this device
             </p>
             {errorDetail && <p style={{ margin: 0 }}>{errorDetail}</p>}
           </div>
@@ -216,11 +216,11 @@ export default function QRScanner({
         {status === 'error' && (
           <div style={{ padding: '1rem', textAlign: 'center', fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
             <p style={{ fontWeight: 600, color: 'var(--color-text-primary)', margin: '0 0 0.5rem' }}>
-              ⚠️ Could not start the camera
+              <span className="font-mono" style={{ color: 'var(--color-danger)' }}>ERR</span> — Could not start the camera
             </p>
             {errorDetail && <p style={{ margin: '0 0 0.75rem' }}>{errorDetail}</p>}
             <button className="btn btn-primary" onClick={() => requestPermissionAndStart()}>
-              ↻ Retry camera
+              Retry camera
             </button>
           </div>
         )}

@@ -23,9 +23,9 @@ export default function SignOutButton() {
       onClick={handleSignOut}
       disabled={signingOut}
       className="btn"
-      style={{ minHeight: 36, padding: '0 0.9rem', fontSize: '0.8rem' }}
+      style={{ minHeight: 48, padding: '0 0.9rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
     >
-      {signingOut ? 'Signing out…' : '⏻ Sign out'}
+      {signingOut ? 'Signing out…' : 'Sign out'}
     </button>
   )
 }

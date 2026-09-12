@@ -94,7 +94,7 @@ export default function BracketSvg({
             <g key={n.id}>
               <rect x={x} y={y} width={COL_W - 20} height={ROW_H - 8} rx={8}
                 fill="none" stroke="var(--color-warning)" strokeWidth={1.5} strokeDasharray="5 3" />
-              <text x={x + 12} y={y + 24} style={{ fill: 'var(--color-warning)', fontSize: 22 }}>🏆</text>
+              <text x={x + 12} y={y + 24} style={{ fill: 'var(--color-warning)', fontSize: 11, fontWeight: 800 }}>CHAMPION</text>
               <text x={x + 42} y={y + 28}
                 style={{ fill: 'var(--color-text-primary)', fontSize: 12, fontWeight: 700 }}>
                 {championId ? name(championId) : 'TBD'}

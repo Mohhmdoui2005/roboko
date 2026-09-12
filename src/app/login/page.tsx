@@ -1,4 +1,5 @@
 'use client'
+// Hallmark · genre: atmospheric · macrostructure: Long Document · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'

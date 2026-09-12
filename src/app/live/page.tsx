@@ -1,4 +1,5 @@
 'use client'
+// Hallmark · genre: atmospheric · macrostructure: Stat-Led · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -207,7 +208,16 @@ export default function LivePage() {
         </div>
 
         {!knockoutLive ? (
-          <div className="card p-2 sm:p-4">
+          <>
+            {board.length > 0 && (
+              <div>
+                <p className="stat-hero__number">{board[0].wins}</p>
+                <p className="stat-hero__qualifier">
+                  wins lead · {board[0].name} · {board.length} teams
+                </p>
+              </div>
+            )}
+          <div className="overflow-x-auto card p-2 sm:p-4">
             <table className="ds-table" style={{ fontSize: '1.05rem' }}>
               <thead>
                 <tr><th style={{ width: 60 }}>#</th><th>Team</th>
@@ -233,6 +243,7 @@ export default function LivePage() {
               </tbody>
             </table>
           </div>
+          </>
         ) : (
           <div className="overflow-x-auto card p-2">
             <BracketSvg nodes={nodes} matches={koMatches} teamNames={teamNames} />

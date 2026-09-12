@@ -65,6 +65,23 @@
 
   /* Touch targets — operational screens need 48px min */
   --touch-target: 48px;
+
+  /* Hallmark alias layer (audit fix): one namespace, two names.
+     Pages use bg/surface/raised/text-*; design.md/tokens.css use
+     paper/ink/rule. Both resolve here so neither side drifts. */
+  --color-paper:   var(--color-bg);
+  --color-paper-2: var(--color-surface);
+  --color-paper-3: var(--color-raised);
+  --color-ink:     var(--color-text-primary);
+  --color-ink-2:   var(--color-text-secondary);
+  --color-rule:    var(--color-border);
+  --color-accent-ink: #04110b; /* dark ink on signal-green fills */
+  --color-qr-paper:   #ffffff; /* QR contrast boxes only — never a surface */
+  --font-display: var(--font-heading);
+  --font-outlier: var(--font-mono);
+  --radius-card: 8px;
+  --radius-pill: 9999px;
+  --radius-input: 8px;
 }
 
 /* ── 2. Tailwind v4 @theme mapping ─────────────────────────────────────────── */
@@ -299,14 +316,14 @@ code, kbd, pre, samp, .font-mono {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(5, 5, 7, 0.88);
+  background: color-mix(in srgb, var(--color-bg) 88%, transparent);
   backdrop-filter: blur(4px);
 }
 .modal-panel {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 12px;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7); /* shadow ONLY on modals */
+  box-shadow: 0 24px 64px color-mix(in srgb, black 70%, transparent); /* shadow ONLY on modals */
 }
 
 /* --- Table base --- */
@@ -314,6 +331,7 @@ code, kbd, pre, samp, .font-mono {
   width: 100%;
   font-size: 0.9375rem;
   border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
 }
 .ds-table th {
   color: var(--color-text-tertiary);

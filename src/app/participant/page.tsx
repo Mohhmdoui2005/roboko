@@ -1,4 +1,5 @@
 'use client'
+// Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useEffect, useState, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -198,7 +199,7 @@ export default function ParticipantDashboard() {
               border: '1px solid var(--color-warning)',
               background: 'color-mix(in srgb, var(--color-warning) 8%, var(--color-surface))',
             }} role="alert">
-            <span style={{ fontSize: '1.25rem' }}>🔔</span>
+            <span className="font-mono text-xs font-bold" style={{ color: 'var(--color-warning)', border: '1px solid var(--color-warning)', borderRadius: 6, padding: '2px 6px', whiteSpace: 'nowrap' }}>READY</span>
             <div className="flex-1">
               <p style={{ fontWeight: 700, color: 'var(--color-warning)', margin: 0, fontSize: '0.9rem' }}>
                 GET READY — YOUR MATCH IS NEXT
@@ -210,7 +211,7 @@ export default function ParticipantDashboard() {
                 {new Date(visibleNotif.created_at).toLocaleTimeString()} · updates every 10 s
               </p>
             </div>
-            <button className="btn" style={{ minHeight: 40 }}
+            <button className="btn" style={{ minHeight: 48 }}
               onClick={() => setDismissedNotifs(prev => new Set(prev).add(visibleNotif.id))}>
               Dismiss
             </button>
@@ -263,8 +264,8 @@ export default function ParticipantDashboard() {
 
         {/* ── Team Testing QR Code ── */}
         <div className="card p-6 space-y-5">
-          <div className="text-center md:text-left">
-            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
+          <div className="text-left">
+            <div className="flex flex-wrap items-center justify-start gap-2">
               <span className="badge badge-info">
                 ROBOT_TEST
               </span>
@@ -291,7 +292,7 @@ export default function ParticipantDashboard() {
                 <div
                   style={{
                     padding: '0.75rem',
-                    background: '#ffffff',
+                    background: 'var(--color-qr-paper)',
                     borderRadius: 8,
                     display: 'flex',
                     alignItems: 'center',
@@ -311,8 +312,8 @@ export default function ParticipantDashboard() {
                         justifyContent: 'center',
                         textAlign: 'center',
                         fontSize: '0.75rem',
-                        color: '#666',
-                        border: '1px dashed #ccc',
+                        color: 'var(--color-text-tertiary)',
+                        border: '1px dashed var(--color-border)',
                         borderRadius: 4,
                         padding: 8
                       }}

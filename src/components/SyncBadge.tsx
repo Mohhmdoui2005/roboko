@@ -43,13 +43,13 @@ export default function SyncBadge({ onDead }: { onDead?: (item: QueuedMutation) 
         border: '1px solid var(--color-warning)',
         background: 'color-mix(in srgb, var(--color-warning) 8%, var(--color-surface))',
       }} role="status">
-      <span style={{ fontSize: '0.8rem', color: 'var(--color-warning)', fontWeight: 600 }}>
-        ⏳ {pending} mutation{pending === 1 ? '' : 's'} queued
+      <span className="font-mono" style={{ fontSize: '0.8rem', color: 'var(--color-warning)', fontWeight: 600 }}>
+        QUEUED · {pending} mutation{pending === 1 ? '' : 's'}
         {!hasBackgroundSync() && !isOnline() ? ' · offline' : ''}
       </span>
-      <button className="btn btn-primary" style={{ minHeight: 40, padding: '0 0.9rem', fontSize: '0.8rem' }}
+      <button className="btn btn-primary" style={{ minHeight: 48, padding: '0 0.9rem', fontSize: '0.8rem', whiteSpace: 'nowrap' }}
         onClick={() => retryNow()} disabled={syncing || !isOnline()}>
-        {syncing ? 'Syncing…' : '↻ Retry now'}
+        {syncing ? 'Syncing…' : 'Retry now'}
       </button>
       {!hasBackgroundSync() && (
         <span style={{ fontSize: '0.7rem', color: 'var(--color-text-tertiary)' }}>

@@ -1,4 +1,5 @@
 'use client'
+// Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -143,7 +144,7 @@ export default function AdminTeamsPage() {
         {toast && (
           <div className={toast.type === 'success' ? 'toast-success' : 'toast-danger'}
             style={{ padding: '0.75rem 1rem', borderRadius: 8, fontSize: '0.875rem', fontWeight: 500 }} role="alert">
-            {toast.type === 'success' ? '✓' : '✕'} {toast.message}
+            {toast.type === 'success' ? 'OK — ' : 'ERR — '} {toast.message}
           </div>
         )}
 
@@ -187,11 +188,11 @@ export default function AdminTeamsPage() {
                       <td style={{ textAlign: 'center' }}>
                         <div className="flex gap-2 justify-center">
                           <button className="btn btn-primary" disabled={!dirty || savingId === t.id}
-                            onClick={() => handleSave(t.id)} style={{ minHeight: 40, minWidth: 90 }}>
+                            onClick={() => handleSave(t.id)} style={{ minHeight: 48, minWidth: 90 }}>
                             {savingId === t.id ? '…' : 'Save'}
                           </button>
                           <button className="btn btn-danger" disabled={savingId === t.id}
-                            onClick={() => handleDelete(t.id, t.name)} style={{ minHeight: 40 }}>
+                            onClick={() => handleDelete(t.id, t.name)} style={{ minHeight: 48 }}>
                             Delete
                           </button>
                         </div>

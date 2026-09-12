@@ -1,4 +1,5 @@
 'use client'
+// Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -333,50 +334,50 @@ export default function AdminPhase1Dashboard() {
           {/*<h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-accent)', margin: 0 }}>
             Verification — 54 matches, zero repeats, 3 per team
           </h3>*/}
-          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            <div className="p-4" style={{ background: 'var(--color-bg)', borderRadius: 8 }}>
+          <div className="grid gap-4 sm:grid-cols-5">
+            <div className="p-4 sm:col-span-3" style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-card)' }}>
               <p style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', margin: '0 0 4px' }}>TOTAL MATCHES</p>
-              <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-mono)', margin: 0 }}>{verification.total}</p>
-              <p style={{ fontSize: '0.75rem', color: verification.total === 54 ? 'var(--color-success)' : 'var(--color-danger)', marginTop: 4 }}>
-                {verification.total === 54 ? '✅ exactly 54' : '❌ expected 54'}
+              <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', margin: 0 }}>{verification.total}</p>
+              <p className="font-mono" style={{ fontSize: '0.75rem', color: verification.total === 54 ? 'var(--color-success)' : 'var(--color-danger)', marginTop: 4 }}>
+                {verification.total === 54 ? 'OK — exactly 54' : 'ERR — expected 54'}
               </p>
             </div>
-            <div className="p-4" style={{ background: 'var(--color-bg)', borderRadius: 8 }}>
+            <div className="p-4 sm:col-span-2" style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-card)' }}>
               <p style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', margin: '0 0 4px' }}>REPEATED PAIRINGS (ALL)</p>
-              <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-mono)', margin: 0 }}>{verification.dupesAll}</p>
-              <p style={{ fontSize: '0.75rem', color: verification.dupesAll === 0 ? 'var(--color-success)' : 'var(--color-danger)', marginTop: 4 }}>
-                {verification.dupesAll === 0 ? '✅ zero repeats' : '❌ duplicates found'}
+              <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', margin: 0 }}>{verification.dupesAll}</p>
+              <p className="font-mono" style={{ fontSize: '0.75rem', color: verification.dupesAll === 0 ? 'var(--color-success)' : 'var(--color-danger)', marginTop: 4 }}>
+                {verification.dupesAll === 0 ? 'OK — zero repeats' : 'ERR — duplicates found'}
               </p>
             </div>
-            <div className="p-4" style={{ background: 'var(--color-bg)', borderRadius: 8 }}>
+            <div className="p-4 sm:col-span-2" style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-card)' }}>
               <p style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', margin: '0 0 4px' }}>PER SUBPHASE (18 EACH)</p>
               {Object.entries(verification.perSub).map(([s, v]) => (
-                <p key={s} style={{ fontSize: '0.8rem', margin: '2px 0', fontFamily: 'var(--font-mono)' }}>
-                  {s}: {v.n} {v.n === 18 ? '✅' : '❌'} · dupes {v.dupes} {v.dupes === 0 ? '✅' : '❌'}
+                <p key={s} className="font-mono" style={{ fontSize: '0.8rem', margin: '2px 0' }}>
+                  {s}: {v.n} {v.n === 18 ? 'OK' : 'ERR'} · dupes {v.dupes} {v.dupes === 0 ? 'OK' : 'ERR'}
                 </p>
               ))}
               {Object.keys(verification.perSub).length === 0 && (
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>—</p>
               )}
             </div>
-            <div className="p-4" style={{ background: 'var(--color-bg)', borderRadius: 8 }}>
+            <div className="p-4 sm:col-span-1" style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-card)' }}>
               <p style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', margin: '0 0 4px' }}>PER TEAM (3 EACH)</p>
-              <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-mono)', margin: 0 }}>
+              <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', margin: 0 }}>
                 {verification.perTeam.min}–{verification.perTeam.max}
               </p>
-              <p style={{ fontSize: '0.75rem', color: verification.perTeam.off === 0 && verification.perTeam.teams > 0 ? 'var(--color-success)' : 'var(--color-danger)', marginTop: 4 }}>
+              <p className="font-mono" style={{ fontSize: '0.75rem', color: verification.perTeam.off === 0 && verification.perTeam.teams > 0 ? 'var(--color-success)' : 'var(--color-danger)', marginTop: 4 }}>
                 {verification.perTeam.teams === 0
                   ? '—'
                   : verification.perTeam.off === 0
-                    ? `✅ all ${verification.perTeam.teams} teams at 3`
-                    : `❌ ${verification.perTeam.off} team(s) off 3`}
+                    ? `OK — all ${verification.perTeam.teams} teams at 3`
+                    : `ERR — ${verification.perTeam.off} team(s) off 3`}
               </p>
             </div>
-            <div className="p-4" style={{ background: 'var(--color-bg)', borderRadius: 8 }}>
+            <div className="p-4 sm:col-span-2" style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-card)' }}>
               <p style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', margin: '0 0 4px' }}>PER ARENA (QUEUES 1..N)</p>
               {Object.entries(verification.perArena).map(([a, v]) => (
-                <p key={a} style={{ fontSize: '0.8rem', margin: '2px 0', fontFamily: 'var(--font-mono)' }}>
-                  {a}: {v.n} {v.queuesOk ? '✅' : '❌'} · dupes {v.dupes} {v.dupes === 0 ? '✅' : '❌'}
+                <p key={a} className="font-mono" style={{ fontSize: '0.8rem', margin: '2px 0' }}>
+                  {a}: {v.n} {v.queuesOk ? 'OK' : 'ERR'} · dupes {v.dupes} {v.dupes === 0 ? 'OK' : 'ERR'}
                 </p>
               ))}
               {Object.keys(verification.perArena).length === 0 && (
@@ -416,7 +417,7 @@ export default function AdminPhase1Dashboard() {
               </button>
               {accounts && accounts.length > 0 && (
                 <button className="btn" onClick={downloadAccountsCsv} style={{ minWidth: 170 }}>
-                  ⬇ Download CSV
+                  Download CSV
                 </button>
               )}
             </div>

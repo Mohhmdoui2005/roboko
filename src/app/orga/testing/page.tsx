@@ -1,4 +1,5 @@
 'use client'
+// Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import dynamic from 'next/dynamic'
@@ -116,7 +117,7 @@ export default function OrgaTestingPage() {
             className={t.success ? 'toast-success' : 'toast-danger'}
             style={{ padding: '0.75rem 1rem', borderRadius: 8, fontSize: '0.875rem', fontWeight: 500 }}
           >
-            {t.success ? '✓' : '✕'} {t.message}
+            {t.success ? 'OK — ' : 'ERR — '} {t.message}
           </div>
         ))}
       </div>

@@ -1,4 +1,5 @@
 'use client'
+// Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -118,14 +119,14 @@ export default function AdminQRCodesPage() {
           No robots found in database.
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-          {robots.map((robot) => {
+        <div className="grid grid-cols-1 sm:grid-cols-6 gap-5">
+          {robots.map((robot, i) => {
             const payload = robot.qr_payload || JSON.stringify({ domain: 'ROBOT_TEST', robot_id: robot.id })
             const svgId = `qr-svg-${robot.id}`
             return (
               <div
                 key={robot.id}
-                className="card"
+                className="card sm:col-span-3 lg:col-span-2"
                 style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', pageBreakInside: 'avoid' }}
               >
                 <div style={{ width: '100%', marginBottom: 12 }}>
@@ -138,14 +139,14 @@ export default function AdminQRCodesPage() {
                 </div>
 
                 {/* White bg for QR contrast */}
-                <div style={{ padding: 10, background: '#fff', borderRadius: 6, marginBottom: 12 }}>
+                <div style={{ padding: 10, background: 'var(--color-qr-paper)', borderRadius: 6, marginBottom: 12 }}>
                   <QRCodeSVG id={svgId} value={payload} size={150} level="M" includeMargin={false} />
                 </div>
 
                 <button
                   onClick={() => downloadSVG(robot.name, svgId)}
                   className="btn print:hidden"
-                  style={{ minHeight: 36, padding: '0 0.875rem', fontSize: '0.8125rem', width: '100%' }}
+                  style={{ minHeight: 48, padding: '0 0.875rem', fontSize: '0.8125rem', width: '100%' }}
                 >
                   Download SVG
                 </button>

@@ -1,4 +1,5 @@
 'use client'
+// Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -207,7 +208,7 @@ export default function AdminUsersPage() {
         {toast && (
           <div className={toast.type === 'success' ? 'toast-success' : 'toast-danger'}
             style={{ padding: '0.75rem 1rem', borderRadius: 8, fontSize: '0.875rem', fontWeight: 500 }} role="alert">
-            {toast.type === 'success' ? '✓' : '✕'} {toast.message}
+            {toast.type === 'success' ? 'OK — ' : 'ERR — '} {toast.message}
           </div>
         )}
 
@@ -216,7 +217,7 @@ export default function AdminUsersPage() {
           <div className="p-5 space-y-3" role="alert"
             style={{ borderRadius: 12, border: '2px solid var(--color-danger)', background: 'color-mix(in srgb, var(--color-danger) 8%, var(--color-surface))' }}>
             <p style={{ fontWeight: 800, color: 'var(--color-danger)', margin: 0, fontSize: '1rem' }}>
-              ⚠️ STEP 2 OF 2 — Permanently delete this account?
+              STEP 2 OF 2 — Permanently delete this account?
             </p>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-primary)', margin: 0 }}>
               <strong>{armedAccount.name || armedAccount.email}</strong>
@@ -224,11 +225,11 @@ export default function AdminUsersPage() {
               will be removed forever. Signed-in sessions stop working. This cannot be undone.
             </p>
             <div className="flex gap-2 flex-wrap">
-              <button className="btn" onClick={() => setArmedId(null)} style={{ minHeight: 44 }}>
+              <button className="btn" onClick={() => setArmedId(null)} style={{ minHeight: 48 }}>
                 Cancel (keep account)
               </button>
               <button className="btn btn-danger" onClick={confirmDelete}
-                disabled={deleting} style={{ minHeight: 44, minWidth: 220 }}>
+                disabled={deleting} style={{ minHeight: 48, minWidth: 220 }}>
                 {deleting ? 'Deleting…' : 'Yes, delete permanently'}
               </button>
             </div>
@@ -250,7 +251,7 @@ export default function AdminUsersPage() {
                 value={fPassword} onChange={(e) => setFPassword(e.target.value)}
                 style={{ fontSize: '0.9rem' }} />
               <button className="btn" onClick={generatePassword} style={{ minHeight: 48, whiteSpace: 'nowrap' }}>
-                🎲 Generate
+                Generate
               </button>
             </div>
             <select className="input" value={fRole}
@@ -326,7 +327,7 @@ export default function AdminUsersPage() {
                       <td style={{ fontSize: '0.8rem' }}>
                         {[a.team_name, a.assigned_arena].filter(Boolean).join(' · ') || '—'}
                       </td>
-                      <td style={{ fontSize: '0.8rem' }}>{a.confirmed ? '✅' : '❌'}</td>
+                      <td className="font-mono" style={{ fontSize: '0.8rem' }}>{a.confirmed ? 'yes' : 'no'}</td>
                       <td className="font-mono" style={{ fontSize: '0.75rem' }}>
                         {a.last_sign_in ? new Date(a.last_sign_in).toLocaleString() : 'never'}
                       </td>
@@ -339,7 +340,7 @@ export default function AdminUsersPage() {
                           </span>
                         ) : (
                           <button className="btn btn-danger" onClick={() => armDelete(a.id)}
-                            style={{ minHeight: 40, padding: '0 0.8rem', fontSize: '0.8rem' }}>
+                            style={{ minHeight: 48, padding: '0 0.8rem', fontSize: '0.8rem' }}>
                             Delete
                           </button>
                         )}

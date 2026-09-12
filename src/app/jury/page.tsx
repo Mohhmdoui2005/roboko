@@ -1,4 +1,5 @@
 'use client'
+// Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -662,8 +663,8 @@ export default function JuryDashboard() {
                     )}
                   </div>
                 ) : (
-                  <div className="p-4 text-center"
-                    style={{ borderRadius: 8, border: '1px solid var(--color-success)' }}>
+                  <div className="p-4 text-left"
+                    style={{ borderRadius: 'var(--radius-card)', border: '1px solid var(--color-success)' }}>
                     <p style={{ color: 'var(--color-success)', fontWeight: 700, margin: 0 }}>
                       Match completed — {teamName(selected.winner_id)}
                     </p>
@@ -683,7 +684,8 @@ export default function JuryDashboard() {
                       { id: selected.team1_id, count: selected.warnings_team1 ?? 0 },
                       { id: selected.team2_id, count: selected.warnings_team2 ?? 0 },
                     ] as const).map(w => (
-                      <div key={w.id ?? 'x'} className="card p-3 space-y-2">
+                      <div key={w.id ?? 'x'} className="space-y-2"
+                        style={{ borderTop: '1px solid var(--color-border)', paddingTop: '0.75rem' }}>
                         <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
                           {teamName(w.id)}{' '}
                           <span className="font-mono" style={{ color: w.count >= 2 ? 'var(--color-danger)' : 'var(--color-text-secondary)' }}>

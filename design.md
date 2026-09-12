@@ -24,6 +24,7 @@ Terminal catalog, anchored on existing signal green. Dark paper only.
 - `--color-focus`   oklch(75% 0.17 165)
 
 Existing hex aliases preserved in `globals.css`: `--color-bg #060807`, `--color-surface #0e1312`, `--color-raised #16201d`, `--color-accent #00d992`. New code references tokens by name, never raw hex.
+Single namespace: `globals.css` aliases `paper/paper-2/paper-3/ink/ink-2/rule` to the page names above, plus `--color-accent-ink` (dark ink on accent fills), `--color-qr-paper` (QR contrast boxes only), `--font-display`/`--font-outlier`, and `--radius-card/pill/input`. Both names resolve to one value.
 
 ## Typography
 - Display: Chakra Petch, weight 700, style normal (roman only)

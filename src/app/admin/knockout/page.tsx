@@ -1,4 +1,5 @@
 'use client'
+// Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -131,9 +132,9 @@ export default function AdminKnockoutPage() {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <button className="btn" onClick={computeTop16}>↻ Compute Top 16</button>
-            <button className="btn" onClick={handleShuffle} disabled={order.length !== 16}>
-              🎲 Shuffle Seed
+            <button className="btn" style={{ minHeight: 48 }} onClick={computeTop16}>Compute Top 16</button>
+            <button className="btn" style={{ minHeight: 48 }} onClick={handleShuffle} disabled={order.length !== 16}>
+              Shuffle Seed
             </button>
             <button className="btn btn-primary" onClick={handlePublish}
               disabled={publishing || unpublishing || order.length !== 16} style={{ minWidth: 190 }}>

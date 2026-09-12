@@ -1,4 +1,5 @@
 'use client'
+// Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
@@ -73,7 +74,7 @@ export default function AdminTestingPage() {
           style={{ padding: '0.75rem 1rem', borderRadius: 8, fontSize: '0.875rem', fontWeight: 500 }}
           role="alert"
         >
-          {statusMsg.ok ? '✓' : '✕'} {statusMsg.text}
+          {statusMsg.ok ? 'OK — ' : 'ERR — '} {statusMsg.text}
         </div>
       )}
 

@@ -1,4 +1,5 @@
 'use client'
+// Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
@@ -127,8 +128,8 @@ export default function AdminDashboard() {
       <div className="w-full max-w-[1560px] mx-auto flex flex-col lg:flex-row gap-5">
 
         {/* ── Sidebar ── */}
-        <aside className="hidden lg:flex w-64 shrink-0 flex-col justify-between rounded-[24px] p-5"
-          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+        <aside className="hidden lg:flex w-64 shrink-0 flex-col justify-between p-5"
+          style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)' }}>
           <div className="space-y-6">
             <div className="flex items-center gap-2.5 px-2">
               <div className="inline-flex items-center justify-center w-8 h-8 rounded-xl"
@@ -144,7 +145,7 @@ export default function AdminDashboard() {
             <div className="flex items-center gap-2.5 rounded-2xl p-2.5"
               style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
               <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold"
-                style={{ background: 'var(--color-accent)', color: '#04110b' }}>
+                style={{ background: 'var(--color-accent)', color: 'var(--color-accent-ink)' }}>
                 {displayName.charAt(0).toUpperCase()}
               </div>
               <div>
@@ -170,16 +171,16 @@ export default function AdminDashboard() {
             </nav>
           </div>
 
-          <div className="mt-6 rounded-2xl p-4 text-center"
-            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-accent)' }}>
+          <div className="mt-6 p-4 text-left"
+            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-accent)', borderRadius: 'var(--radius-card)' }}>
             <p className="text-xs font-bold" style={{ color: knockoutLive ? 'var(--color-accent-text)' : 'var(--color-info)' }}>
-              {knockoutLive ? '● KNOCKOUT LIVE' : '◌ QUALIFICATION'}
+              {knockoutLive ? 'KNOCKOUT LIVE' : 'QUALIFICATION'}
             </p>
             <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
               {done}/{total} done · lunch {lunchCount ?? '…'} · testing {activeSessions}
             </p>
-            <Link href="/live" className="btn w-full mt-3" style={{ minHeight: 40, fontSize: '0.8rem' }}>
-              Open live screen ↗
+            <Link href="/live" className="btn w-full mt-3" style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+              Open live screen
             </Link>
           </div>
         </aside>
@@ -197,9 +198,9 @@ export default function AdminDashboard() {
               </p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
-              <Link href="/live" className="btn" style={{ minHeight: 40, fontSize: '0.8rem' }}>Live screen</Link>
-              <Link href="/bracket" className="btn" style={{ minHeight: 40, fontSize: '0.8rem' }}>Bracket</Link>
-              <button onClick={fetchAll} className="btn btn-primary" style={{ minHeight: 40, fontSize: '0.8rem' }}>↻ Refresh</button>
+              <Link href="/live" className="btn" style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Live screen</Link>
+              <Link href="/bracket" className="btn" style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Bracket</Link>
+              <button onClick={fetchAll} className="btn btn-primary" style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Refresh</button>
             </div>
           </header>
 
@@ -208,7 +209,8 @@ export default function AdminDashboard() {
             <div className="bento__lead md:col-span-12 card p-6 flex flex-col justify-between relative overflow-hidden min-h-[210px] reveal">
               <div className="flex items-center justify-between relative">
                 <div className="section-head">
-                  <span className="section-head__label">Tournament status</span>
+                  <span className="section-head__label">Live</span>
+                  <h2 className="section-head__title" style={{ fontSize: '1.25rem' }}>Tournament status</h2>
                   <span className="term-prompt text-xs" style={{ color: 'var(--color-text-tertiary)' }}>&gt; roboko --status</span>
                 </div>
                 <span className="text-xs font-bold px-2.5 py-1 rounded-full font-mono"
@@ -224,11 +226,11 @@ export default function AdminDashboard() {
               </div>
               <div className="flex items-center gap-2.5 pt-1 relative">
                 <Link href="/admin/phase1" className="btn flex-1 text-center"
-                  style={{ minHeight: 40, fontSize: '0.8rem' }}>
+                  style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                   Phase 1 · {stats.qualPending} pending
                 </Link>
                 <Link href="/admin/knockout" className="btn btn-primary flex-1 text-center"
-                  style={{ minHeight: 40, fontSize: '0.8rem' }}>
+                  style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                   Knockout · {stats.koTotal || 'setup'}
                 </Link>
               </div>
@@ -237,17 +239,17 @@ export default function AdminDashboard() {
 
           {/* ── Row 2: ops + control center, side by side ── */}
           <section className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-            <div className="lg:col-span-6 rounded-[24px] p-5 flex flex-col justify-between"
-              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+            <div className="lg:col-span-6 p-5 flex flex-col justify-between"
+              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)' }}>
               <div className="flex items-center justify-between mb-2">
                 <h3 className="font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>Ops</h3>
                 <span className="text-xs font-semibold" style={{ color: 'var(--color-text-tertiary)' }}>Live counts</span>
               </div>
-              <p className="text-center text-[11px] font-medium mb-3" style={{ color: 'var(--color-text-tertiary)' }}>
+              <p className="text-left text-[11px] font-medium mb-3" style={{ color: 'var(--color-text-tertiary)' }}>
                 Meals claimed
               </p>
-              <p className="text-center font-bold leading-none"
-                style={{ fontSize: '2.5rem', color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}>
+              <p className="text-left font-bold leading-none"
+                style={{ fontSize: '2.5rem', color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontVariantNumeric: 'tabular-nums' }}>
                 {lunchCount ?? '…'}
               </p>
               <div className="space-y-1.5 text-[11px] pt-3 mt-3"
@@ -270,8 +272,8 @@ export default function AdminDashboard() {
               </Link>
             </div>
 
-            <div className="lg:col-span-6 rounded-[24px] p-6 flex flex-col justify-between"
-              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+            <div className="lg:col-span-6 p-6 flex flex-col justify-between"
+              style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)' }}>
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-base" style={{ color: 'var(--color-text-primary)' }}>Control Center</h3>
                 <span className="badge badge-success">OPERATIONAL</span>
@@ -280,8 +282,8 @@ export default function AdminDashboard() {
               <div className="mt-4" style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))' }}>
                 {TOOLS.map(t => (
                   <Link key={t.title} href={t.href}
-                    className="flex items-center justify-between p-3 rounded-2xl transition-colors"
-                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', textDecoration: 'none' }}>
+                    className="flex items-center justify-between p-3 transition-colors"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', textDecoration: 'none' }}>
                     <span className="flex items-center gap-3">
                       <span className="font-mono text-xs font-bold" style={{ color: 'var(--color-accent-text)', border: '1px solid var(--color-border)', borderRadius: 6, padding: '2px 6px' }}>{t.tag}</span>
                       <span>
@@ -289,7 +291,6 @@ export default function AdminDashboard() {
                         <span className="block text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>{t.desc}</span>
                       </span>
                     </span>
-                    <span style={{ color: 'var(--color-text-tertiary)' }}>→</span>
                   </Link>
                 ))}
               </div>
