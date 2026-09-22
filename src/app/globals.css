@@ -83,6 +83,7 @@
   --radius-card: 8px;
   --radius-pill: 9999px;
   --radius-input: 8px;
+  --layout-wide: 97.5rem; /* ops command-center max width (1560px) */
 }
 
 /* ── 2. Tailwind v4 @theme mapping ─────────────────────────────────────────── */

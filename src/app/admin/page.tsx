@@ -106,6 +106,7 @@ export default function AdminDashboard() {
 
   const total = stats.qualTotal + stats.koTotal
   const done = stats.qualCompleted + stats.koCompleted
+  const operational = teamCount > 0 || matches.length > 0
 
   if (authLoading || loading) {
     return (
@@ -127,26 +128,15 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen p-3 sm:p-5 lg:p-6"
       style={{ background: 'var(--color-bg)', color: 'var(--color-text-primary)' }}>
-      <div className="w-full max-w-[1560px] mx-auto flex flex-col lg:flex-row gap-5">
+      <div className="w-full mx-auto flex flex-col lg:flex-row gap-5" style={{ maxWidth: 'var(--layout-wide)' }}>
 
         {/* ── Sidebar ── */}
         <aside className="hidden lg:flex w-64 shrink-0 flex-col justify-between p-5"
           style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)' }}>
           <div className="space-y-6">
-            <div className="flex items-center gap-2.5 px-2">
-              <div className="inline-flex items-center justify-center w-8 h-8 rounded-xl"
-                style={{ border: '2px solid var(--color-accent)', background: 'var(--color-bg)' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                </svg>
-              </div>
-              <span className="text-xl font-bold tracking-tight"
-                style={{ color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)' }}>Roboko</span>
-            </div>
-
-            <div className="flex items-center gap-2.5 rounded-2xl p-2.5"
-              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)' }}>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold"
+            <div className="flex items-center gap-2 p-3"
+              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)' }}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold"
                 style={{ background: 'var(--color-accent)', color: 'var(--color-accent-ink)' }}>
                 {displayName.charAt(0).toUpperCase()}
               </div>
@@ -154,19 +144,19 @@ export default function AdminDashboard() {
                 <p className="text-xs font-semibold leading-tight" style={{ color: 'var(--color-text-primary)' }}>
                   Hello, {displayName}
                 </p>
-                <p className="text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>Admin account</p>
+                <p className="text-xs" style={{ color: 'var(--color-text-tertiary)' }}>Admin account</p>
               </div>
             </div>
 
             <nav aria-label="Admin sections" className="space-y-1">
-              <p className="text-[11px] font-semibold uppercase px-3 pb-1"
+              <p className="text-xs font-semibold uppercase px-3 pb-1"
                 style={{ color: 'var(--color-text-tertiary)', letterSpacing: '0.08em' }}>Command</p>
               {NAV.map(n => (
                 <Link key={n.label} href={n.href}
-                  className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
+                  className="flex items-center gap-3 px-3 py-2 text-sm font-medium"
                   style={n.active
-                    ? { background: 'var(--color-raised)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)' }
-                    : { color: 'var(--color-text-tertiary)', border: '1px solid transparent' }}>
+                    ? { background: 'var(--color-raised)', color: 'var(--color-text-primary)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)' }
+                    : { color: 'var(--color-text-tertiary)', border: '1px solid transparent', borderRadius: 'var(--radius-card)' }}>
                   {n.label}
                 </Link>
               ))}
@@ -178,10 +168,10 @@ export default function AdminDashboard() {
             <p className="text-xs font-bold" style={{ color: knockoutLive ? 'var(--color-accent-text)' : 'var(--color-info)' }}>
               {knockoutLive ? 'KNOCKOUT LIVE' : 'QUALIFICATION'}
             </p>
-            <p className="text-[11px] mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
+            <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>
               {done}/{total} done · lunch {lunchCount ?? '…'} · testing {activeSessions}
             </p>
-            <Link href="/live" className="btn w-full mt-3" style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+            <Link href="/live" className="btn w-full mt-3" style={{ minHeight: 48, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
               Open live screen
             </Link>
           </div>
@@ -189,6 +179,15 @@ export default function AdminDashboard() {
 
         {/* ── Main workspace ── */}
         <main className="flex-1 flex flex-col gap-5 min-w-0">
+          {/* Compact status for <lg (sidebar hidden): same signal, one row */}
+          <div className="lg:hidden card p-4 flex items-center justify-between gap-3">
+            <p className="text-xs font-bold" style={{ color: knockoutLive ? 'var(--color-accent-text)' : 'var(--color-info)' }}>
+              {knockoutLive ? 'KNOCKOUT LIVE' : 'QUALIFICATION'}
+            </p>
+            <p className="text-xs font-mono" style={{ color: 'var(--color-text-tertiary)' }}>
+              {done}/{total} done · lunch {lunchCount ?? '…'} · testing {activeSessions}
+            </p>
+          </div>
           <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-xl font-bold tracking-tight"
@@ -206,7 +205,7 @@ export default function AdminDashboard() {
                   <button key={t.id} onClick={() => setTheme(t.id)}
                     aria-pressed={theme === t.id} className="btn font-mono"
                     style={{
-                      minHeight: 40, padding: '0 0.8rem', fontSize: '0.75rem',
+                      minHeight: 48, padding: '0 0.8rem', fontSize: '0.75rem',
                       ...(theme === t.id
                         ? { borderColor: 'var(--color-accent)', color: 'var(--color-accent-text)' }
                         : { borderColor: 'transparent', color: 'var(--color-text-tertiary)' }),
@@ -215,22 +214,22 @@ export default function AdminDashboard() {
                   </button>
                 ))}
               </div>
-              <Link href="/live" className="btn" style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Live screen</Link>
-              <Link href="/bracket" className="btn" style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Bracket</Link>
-              <button onClick={fetchAll} className="btn btn-primary" style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Refresh</button>
+              <Link href="/live" className="btn" style={{ minHeight: 48, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Live screen</Link>
+              <Link href="/bracket" className="btn" style={{ minHeight: 48, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Bracket</Link>
+              <button onClick={fetchAll} className="btn btn-primary" style={{ minHeight: 48, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>Refresh</button>
             </div>
           </header>
 
           {/* ── Row 1: status — Stat-Led, dark paper, no gradient fill ── */}
           <section className="grid grid-cols-1 md:grid-cols-12 gap-5">
-            <div className="bento__lead md:col-span-12 card p-6 flex flex-col justify-between relative overflow-hidden min-h-[210px] reveal">
+            <div className="bento__lead md:col-span-12 card p-6 flex flex-col justify-between relative overflow-hidden min-h-52 reveal">
               <div className="flex items-center justify-between relative">
                 <div className="section-head">
                   <span className="section-head__label">Live</span>
                   <h2 className="section-head__title" style={{ fontSize: '1.25rem' }}>Tournament status</h2>
                   <span className="term-prompt text-xs" style={{ color: 'var(--color-text-tertiary)' }}>&gt; roboko --status</span>
                 </div>
-                <span className="text-xs font-bold px-2.5 py-1 rounded-full font-mono"
+                <span className="text-xs font-bold px-3 py-1 rounded-full font-mono"
                   style={{ border: '1px solid var(--color-border)', color: 'var(--color-text-secondary)' }}>
                   {total} matches
                 </span>
@@ -243,11 +242,11 @@ export default function AdminDashboard() {
               </div>
               <div className="flex items-center gap-2.5 pt-1 relative">
                 <Link href="/admin/phase1" className="btn flex-1 text-center"
-                  style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                  style={{ minHeight: 48, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                   Phase 1 · {stats.qualPending} pending
                 </Link>
                 <Link href="/admin/knockout" className="btn btn-primary flex-1 text-center"
-                  style={{ minHeight: 40, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                  style={{ minHeight: 48, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
                   Knockout · {stats.koTotal || 'setup'}
                 </Link>
               </div>
@@ -262,14 +261,14 @@ export default function AdminDashboard() {
                 <h3 className="font-bold text-sm" style={{ color: 'var(--color-text-primary)' }}>Ops</h3>
                 <span className="text-xs font-semibold" style={{ color: 'var(--color-text-tertiary)' }}>Live counts</span>
               </div>
-              <p className="text-left text-[11px] font-medium mb-3" style={{ color: 'var(--color-text-tertiary)' }}>
+              <p className="text-left text-xs font-medium mb-3" style={{ color: 'var(--color-text-tertiary)' }}>
                 Meals claimed
               </p>
               <p className="text-left font-bold leading-none"
                 style={{ fontSize: '2.5rem', color: 'var(--color-text-primary)', fontFamily: 'var(--font-heading)', fontVariantNumeric: 'tabular-nums' }}>
                 {lunchCount ?? '…'}
               </p>
-              <div className="space-y-1.5 text-[11px] pt-3 mt-3"
+              <div className="space-y-1.5 text-xs pt-3 mt-3"
                 style={{ borderTop: '1px solid var(--color-border)', color: 'var(--color-text-tertiary)' }}>
                 <div className="flex items-center justify-between">
                   <span>Testing active</span>
@@ -284,7 +283,7 @@ export default function AdminDashboard() {
                   <span className="font-bold" style={{ color: 'var(--color-text-primary)' }}>{stats.qualPending}</span>
                 </div>
               </div>
-              <Link href="/admin/lunch" className="btn w-full mt-4" style={{ minHeight: 40, fontSize: '0.8rem' }}>
+              <Link href="/admin/lunch" className="btn w-full mt-4" style={{ minHeight: 48, fontSize: '0.8rem' }}>
                 Open lunch control
               </Link>
             </div>
@@ -293,19 +292,19 @@ export default function AdminDashboard() {
               style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)' }}>
               <div className="flex items-center justify-between">
                 <h3 className="font-bold text-base" style={{ color: 'var(--color-text-primary)' }}>Control Center</h3>
-                <span className="badge badge-success">OPERATIONAL</span>
+                <span className={`badge ${operational ? 'badge-success' : 'badge-neutral'}`}>{operational ? 'OPERATIONAL' : 'STANDBY'}</span>
               </div>
               <p className="text-xs mt-1" style={{ color: 'var(--color-text-tertiary)' }}>Every admin tool — one tap.</p>
               <div className="mt-4" style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))' }}>
                 {TOOLS.map(t => (
                   <Link key={t.title} href={t.href}
-                    className="flex items-center justify-between p-3 transition-colors"
+                    className="flex items-center justify-between p-3"
                     style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-card)', textDecoration: 'none' }}>
                     <span className="flex items-center gap-3">
                       <span className="font-mono text-xs font-bold" style={{ color: 'var(--color-accent-text)', border: '1px solid var(--color-border)', borderRadius: 6, padding: '2px 6px' }}>{t.tag}</span>
                       <span>
                         <span className="block text-xs font-bold" style={{ color: 'var(--color-text-primary)' }}>{t.title}</span>
-                        <span className="block text-[11px]" style={{ color: 'var(--color-text-tertiary)' }}>{t.desc}</span>
+                        <span className="block text-xs" style={{ color: 'var(--color-text-tertiary)' }}>{t.desc}</span>
                       </span>
                     </span>
                   </Link>
