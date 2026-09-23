@@ -125,7 +125,11 @@ $$;
 -- 4. submit_match_round — SINGLE canonical definition.
 -- Params: (p_match_id, p_request_id, p_round_number, p_team1_result, p_team2_result)
 -- Result encoding: 1 = win, 0 = loss, NULL = null/draw.
--- Round 4 is restricted to decisive win/loss only (server-enforced).
+-- QUALIFICATION: rounds 1-3 only (win/loss or null/null). No round 4 — after
+--   round 3 the match completes: most round-wins takes it, tied = draw
+--   (winner_id stays NULL, leaderboard counts it as played, no win).
+-- KNOCKOUT: rounds 1-4, round 4 restricted to decisive win/loss only, so the
+--   bracket always gets a winner (server-enforced).
 -- current_round auto-advances here — clients must NOT compute it.
 CREATE OR REPLACE FUNCTION public.submit_match_round(
   p_match_id UUID,
@@ -141,10 +145,12 @@ AS $$
 DECLARE
   v_existing RECORD;
   v_match RECORD;
+  v_is_ko BOOLEAN;
   v_next_round INT;
   v_w1_count INT := 0;
   v_w2_count INT := 0;
   v_match_winner UUID := NULL;
+  v_completed BOOLEAN := false;
 BEGIN
   -- Idempotency: same request_id retried (double-click / retry) → same answer.
   -- NOTE: compared as text — an early draft created request_id as TEXT, so
@@ -166,22 +172,35 @@ BEGIN
   IF v_match.status = 'COMPLETED' THEN
     RAISE EXCEPTION 'Match already completed';
   END IF;
-  IF p_round_number < 1 OR p_round_number > 4 THEN
-    RAISE EXCEPTION 'Round must be between 1 and 4';
-  END IF;
+  v_is_ko := COALESCE(v_match.is_knockout, false);
 
-  -- Rounds 1-3: win/loss or null/null. Round 4: decisive win/loss ONLY.
   -- NOTE: IS NOT DISTINCT FROM (not =) so NULLs compare correctly.
-  IF p_round_number = 4 THEN
-    IF NOT ((p_team1_result IS NOT DISTINCT FROM 1 AND p_team2_result IS NOT DISTINCT FROM 0)
-         OR (p_team1_result IS NOT DISTINCT FROM 0 AND p_team2_result IS NOT DISTINCT FROM 1)) THEN
-      RAISE EXCEPTION 'Round 4 requires a decisive win/loss (no nulls)';
+  IF v_is_ko THEN
+    -- KNOCKOUT: rounds 1-4, round 4 decisive win/loss ONLY.
+    IF p_round_number < 1 OR p_round_number > 4 THEN
+      RAISE EXCEPTION 'Round must be between 1 and 4';
+    END IF;
+    IF p_round_number = 4 THEN
+      IF NOT ((p_team1_result IS NOT DISTINCT FROM 1 AND p_team2_result IS NOT DISTINCT FROM 0)
+           OR (p_team1_result IS NOT DISTINCT FROM 0 AND p_team2_result IS NOT DISTINCT FROM 1)) THEN
+        RAISE EXCEPTION 'Round 4 requires a decisive win/loss (no nulls)';
+      END IF;
+    ELSE
+      IF NOT ((p_team1_result IS NOT DISTINCT FROM 1 AND p_team2_result IS NOT DISTINCT FROM 0)
+           OR (p_team1_result IS NOT DISTINCT FROM 0 AND p_team2_result IS NOT DISTINCT FROM 1)
+           OR (p_team1_result IS NULL AND p_team2_result IS NULL)) THEN
+        RAISE EXCEPTION 'Rounds 1-3 require win/loss or null/null';
+      END IF;
     END IF;
   ELSE
+    -- QUALIFICATION: rounds 1-3 only, nulls allowed throughout, no round 4.
+    IF p_round_number < 1 OR p_round_number > 3 THEN
+      RAISE EXCEPTION 'Qualification matches have rounds 1-3 only (no round 4)';
+    END IF;
     IF NOT ((p_team1_result IS NOT DISTINCT FROM 1 AND p_team2_result IS NOT DISTINCT FROM 0)
          OR (p_team1_result IS NOT DISTINCT FROM 0 AND p_team2_result IS NOT DISTINCT FROM 1)
          OR (p_team1_result IS NULL AND p_team2_result IS NULL)) THEN
-      RAISE EXCEPTION 'Rounds 1-3 require win/loss or null/null';
+      RAISE EXCEPTION 'Qualification rounds require win/loss or null/null';
     END IF;
   END IF;
 
@@ -203,23 +222,40 @@ BEGIN
     v_match_winner := v_match.team1_id;
   ELSIF v_w2_count >= 2 THEN
     v_match_winner := v_match.team2_id;
-  ELSIF p_round_number = 4 THEN
-    -- Round 4 only happens at 0-0-0 (all null), so it always decides
+  ELSIF v_is_ko AND p_round_number = 4 THEN
+    -- Knockout round 4 only happens at 0-0-0 (all null), so it always decides
     IF p_team1_result = 1 THEN
       v_match_winner := v_match.team1_id;
     ELSIF p_team2_result = 1 THEN
       v_match_winner := v_match.team2_id;
     END IF;
+  ELSIF NOT v_is_ko AND p_round_number = 3 THEN
+    -- Qualification has no round 4: round 3 always finishes the match.
+    -- Most round-wins takes it; tied (1-1 or 0-0) = draw, winner stays NULL.
+    IF v_w1_count > v_w2_count THEN
+      v_match_winner := v_match.team1_id;
+    ELSIF v_w2_count > v_w1_count THEN
+      v_match_winner := v_match.team2_id;
+    END IF;
+    v_completed := true;
+  END IF;
+
+  IF v_match_winner IS NOT NULL THEN
+    v_completed := true;
   END IF;
 
   -- Server-side auto-advance. No client-side round logic.
+  -- (Qualification caps at 3 — there is no round 4 to advance to.)
   v_next_round := p_round_number + 1;
+  IF NOT v_is_ko AND v_next_round > 3 THEN
+    v_next_round := 3;
+  END IF;
 
   UPDATE public.matches
   SET
     current_round = v_next_round,
     -- status is a match_status ENUM, so cast the CASE result explicitly.
-    status = (CASE WHEN v_match_winner IS NOT NULL THEN 'COMPLETED' ELSE 'IN_PROGRESS' END)::public.match_status,
+    status = (CASE WHEN v_completed THEN 'COMPLETED' ELSE 'IN_PROGRESS' END)::public.match_status,
     winner_id = COALESCE(v_match_winner, winner_id)
   WHERE id = p_match_id;
 

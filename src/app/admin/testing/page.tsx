@@ -2,6 +2,7 @@
 // Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import Countdown from '@/components/Countdown'
 
@@ -59,9 +60,12 @@ export default function AdminTestingPage() {
 
       {/* ── Header ── */}
       <div style={{ borderBottom: '1px solid var(--color-border)', paddingBottom: '1.25rem' }}>
-        <h1 style={{ fontSize: '1.5rem', color: 'var(--color-text-primary)', lineHeight: 1.1, letterSpacing: '-0.02em', fontFamily: 'var(--font-heading)', margin: 0 }}>
-          Test Room <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 400 }}>— Admin</span>
-        </h1>
+        <div className="flex items-center gap-3">
+          <Link href="/admin" className="btn" style={{ minHeight: 40 }}>← Dashboard</Link>
+          <h1 style={{ fontSize: '1.5rem', color: 'var(--color-text-primary)', lineHeight: 1.1, letterSpacing: '-0.02em', fontFamily: 'var(--font-heading)', margin: 0 }}>
+            Test Room <span style={{ color: 'var(--color-text-tertiary)', fontWeight: 400 }}>— Admin</span>
+          </h1>
+        </div>
         <p style={{ fontSize: '0.8125rem', color: 'var(--color-text-tertiary)', marginTop: 4 }}>
           5 s polling · No realtime connections · Manual override available
         </p>

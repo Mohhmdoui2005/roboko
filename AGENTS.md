@@ -30,20 +30,36 @@ Next.js 16 (webpack build) + React 19 + Supabase (`@supabase/ssr`, `@supabase/su
 ## Routes
 - Public/venue: `/live` (stat-led leaderboard/bracket, wake-lock), `/bracket`
   (static wrapper over `BracketViz`), `/login`, `/style-guide`.
-- `/admin/*`: `page.tsx` (command center), `teams`, `phase1` (generate 54 qual
+- `/admin/*`: `page.tsx` (command center), `teams`, `phase1` (generate qual
   matches + publish), `knockout` (top-16 seeds → `bracket_nodes`), `leaderboard`,
   `lunch`, `qr-codes`, `testing`, `users`. Layout: `src/app/admin/layout.tsx`.
-- `/orga/*`: portal + `lunch` + `testing` QR scanner stations.
+- `/orga/*`: portal + `lunch` + `testing` QR scanner stations (testing keeps a
+  persistent TIME UP list per expired session until orga confirms removal).
 - `/jury/page.tsx`: per-arena scoring console. `/participant/page.tsx`: profile +
-  test-session countdown + team `ROBOT_TEST` QR. APIs: `/api/admin/users`,
-  `/api/admin/create-team-accounts`.
+  own published qual matches + per-round results (10 s poll), test-session
+  countdown with a persistent TIME'S UP leave-the-room alert on expiry +
+  team `ROBOT_TEST` QR. APIs: `/api/admin/users`,
+  `/api/admin/create-team-accounts`, `/api/admin/delete-team` (FK-ordered team
+  removal: refuses on live history, else rounds/notifs → matches → sessions/
+  robots → unlink profiles → team), `/api/admin/generate-lunch-badges`
+  (GET lists, POST issues N single-use `PERSON_LUNCH` badges as lightweight
+  auth accounts + holder profiles, hidden from Users via
+  `app_metadata.lunch_badge`; HMAC secret stays server-side),
+  `/api/admin/generate-testing-qrs` (POST ensures one robot per team, named
+  "<Team> Robot", + backfills `ROBOT_TEST` payloads).
 
 ## Tournament logic (server is source of truth)
-- Phase 1 qual: best-of-4 rounds. Rounds 1–3 allow `win/loss` (`1/0`) or
-  `null/null`; round 4 is decisive win/loss only (server-enforced in
-  `scripts/phase1_setup.sql:submit_match_round`). Round 4 unlocks when rounds
-  1–3 are all `null/null`. First to 2 round-wins completes the match
-  (`COMPLETED` + `winner_id`); `current_round` auto-advances server-side —
+- Phase 1 qual: roster-adaptive `generate_phase1_matches()` builds floor(3N/2)
+  from the CURRENT `teams` table (3 rounds circle method; odd N → rotating bye
+  + one patch match, so exactly one team plays 2 — optimal, zero walkovers).
+  D-day no-show flow = delete absent teams on Teams page → regenerate (full
+  rebuild; UI confirms when wiping started matches). Phase 1 page hides
+  orphan matches (deleted teams) + verification adapts (no hardcoded 54).
+- Phase 1 scoring: qualification is rounds 1–3 only (`win/loss` or `null/null`;
+  round 3 always finishes — most round-wins or draw, `winner_id` NULL on draws).
+  Knockout keeps the decisive round 4 (`submit_match_round` branches on
+  `is_knockout` in `scripts/phase1_setup.sql`). First to 2 round-wins completes
+  either phase early; `current_round` auto-advances server-side —
   **never compute it client-side**.
 - Warnings: `increment_warning` / `decrement_warning` per team per match, 3rd
   warning forfeits the current round (see `scripts/warning_update.sql`).

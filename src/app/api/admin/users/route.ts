@@ -41,6 +41,9 @@ export async function GET(req: Request) {
       if (error) throw new Error(error.message)
       const users = data.users || []
       users.forEach((u) => {
+        // Lunch badge holder accounts (issued from the QR Codes page) are
+        // QR-only infrastructure, not people — keep them out of management.
+        if (((u.app_metadata as { lunch_badge?: boolean }) || {}).lunch_badge === true) return
         const prof = profById[u.id]
         out.push({
           id: u.id,

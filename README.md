@@ -30,15 +30,20 @@ lookup). `src/middleware.ts` gates every route by role.
 
 ## Tournament flow
 
-1. **Phase 1 — qualification.** `generate_phase1_matches()` builds 54 matches
-   (36 teams, circle method: 3 opponents each across 3 subphases × 4 arenas).
-   Admin publishes matches; jury scores best-of-4 rounds (`submit_match_round`,
-   round 4 is decisive win/loss only).
+1. **Phase 1 — qualification.** `generate_phase1_matches()` builds floor(3N/2)
+   matches from the current roster (circle method: 3 opponents each across
+   3 subphases × 4 arenas; odd N → one team plays 2, optimal). D-day no-shows:
+   delete absent teams first, then regenerate — every match stays
+   present-vs-present, zero walkovers. Admin publishes matches; jury scores
+   max 3 rounds (`submit_match_round` — round 3 always finishes: most wins
+   or draw, nulls allowed throughout).
 2. **Warnings.** 3 warnings per team **per round** — the 3rd auto-forfeits the
    current round server-side. Counters reset every recorded round. Jury can
    also remove warnings (a recorded forfeit stands).
 3. **Knockout.** Top-16 seeds → shuffled → published 15-match bracket
-   (R16 → QF → SF → Final → Champion). Winners advance automatically via
+   (R16 → QF → SF → Final → Champion). Knockout keeps the decisive round 4
+   (win/loss only, all-null rounds 1–3 unlock it) so the bracket always gets
+   a winner. Winners advance automatically via
    trigger; `knockout_live` flips the venue screen.
 4. **Test room.** Orga scans a robot's `ROBOT_TEST` QR → 5-minute session in the
    least-loaded of Test 1–8. Quota: **2 sessions per team, lifetime** — the 3rd

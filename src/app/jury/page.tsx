@@ -242,13 +242,20 @@ export default function JuryDashboard() {
   const selected = matches.find(m => m.id === selectedId) ?? null
   const confirmedRounds = rounds.filter(r => !r.pending)
 
-  // Round 4 unlock: rounds 1-3 all submitted AND all null/null
-  const round4Unlocked = [1, 2, 3].every(n => {
+  // Phase shapes differ: qualification is rounds 1-3 only (round 3 always
+  // finishes — most wins or draw), knockout keeps the decisive round 4.
+  // The list is already filtered by phase, so `phase` is the source of truth.
+  const isKnockoutPhase = phase === 'KNOCKOUT'
+  const maxRound = isKnockoutPhase ? 4 : 3
+
+  // Round 4 unlock (knockout only): rounds 1-3 all submitted AND all null/null
+  const round4Unlocked = isKnockoutPhase && [1, 2, 3].every(n => {
     const r = confirmedRounds.find(x => x.round_number === n)
     return r && r.team1_result === null && r.team2_result === null
   })
-  const round4Done = confirmedRounds.some(r => r.round_number === 4)
+  const round4Done = isKnockoutPhase && confirmedRounds.some(r => r.round_number === 4)
   const isCompleted = selected?.status === 'COMPLETED'
+  const isDraw = isCompleted && !selected?.winner_id
 
   // ── Round submit via TanStack queued mutation ─────────────────────────────
   // Online: RPC now. Offline/net-fail: enqueued + optimistic success kept;
@@ -293,11 +300,16 @@ export default function JuryDashboard() {
   const submitRound = (t1: number | null, t2: number | null) => {
     if (!selected || submitting || isCompleted) return
     const roundNumber = selected.current_round ?? 1
-    if (roundNumber > 4) {
-      showToast('All rounds for this match are done', 'error')
+    if (roundNumber > maxRound) {
+      showToast(
+        isKnockoutPhase
+          ? 'All rounds for this match are done'
+          : 'Qualification matches have 3 rounds only — round 3 finishes the match',
+        'error'
+      )
       return
     }
-    if (roundNumber === 4 && (t1 === null || t2 === null)) {
+    if (isKnockoutPhase && roundNumber === 4 && (t1 === null || t2 === null)) {
       showToast('Round 4 must be win/loss — no nulls', 'error')
       return
     }
@@ -596,6 +608,9 @@ export default function JuryDashboard() {
                         {teamName(selected.winner_id)}
                       </strong></>
                     )}
+                    {isDraw && (
+                      <> · <strong style={{ color: 'var(--color-text-tertiary)' }}>Draw</strong></>
+                    )}
                   </p>
                 </div>
 
@@ -630,8 +645,11 @@ export default function JuryDashboard() {
                   <div className="space-y-2">
                     <h3 style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--color-text-tertiary)', margin: 0 }}>
                       Submit round {selected.current_round ?? 1} result
-                      {round4Unlocked && !round4Done && (
+                      {isKnockoutPhase && round4Unlocked && !round4Done && (
                         <span style={{ color: 'var(--color-warning)' }}> · Round 4 — win/loss only</span>
+                      )}
+                      {!isKnockoutPhase && (selected.current_round ?? 1) === 3 && (
+                        <span style={{ color: 'var(--color-text-tertiary)' }}> · final round — most wins or draw</span>
                       )}
                     </h3>
                     <div className="grid gap-3" style={{ gridTemplateColumns: '1fr' }}>
@@ -641,7 +659,7 @@ export default function JuryDashboard() {
                         onClick={() => submitRound(1, 0)}>
                         {teamName(selected.team1_id)} WINS
                       </button>
-                      {!(round4Unlocked || (selected.current_round ?? 1) === 4) && (
+                      {!(isKnockoutPhase && (round4Unlocked || (selected.current_round ?? 1) === 4)) && (
                         <button className="btn"
                           style={{ minHeight: 64, fontSize: '1.05rem' }}
                           disabled={submitting}
@@ -661,6 +679,13 @@ export default function JuryDashboard() {
                         Submitting… optimistic update shown, rolling back on error.
                       </p>
                     )}
+                  </div>
+                ) : isDraw ? (
+                  <div className="p-4 text-left"
+                    style={{ borderRadius: 'var(--radius-card)', border: '1px solid var(--color-border)' }}>
+                    <p style={{ color: 'var(--color-text-secondary)', fontWeight: 700, margin: 0 }}>
+                      Match completed — draw (no winner)
+                    </p>
                   </div>
                 ) : (
                   <div className="p-4 text-left"

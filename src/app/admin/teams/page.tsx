@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
+import { adminFetch } from '@/lib/adminApi'
 import { useAuth } from '@/components/AuthProvider'
 
 interface Team {
@@ -94,14 +95,32 @@ export default function AdminTeamsPage() {
   }
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Delete team "${name}"? Matches referencing it will keep the ID but show a short fallback.`)) return
+    if (!confirm(`Delete team "${name}"? Its not-started matches, robots and test sessions go too (participant accounts are kept, unlinked). Regenerate Phase 1 afterwards to rebuild a clean schedule.`)) return
     setSavingId(id)
-    const { error } = await supabase.from('teams').delete().eq('id', id)
-    if (error) {
-      showToast(`Delete failed: ${error.message}`, 'error')
-    } else {
-      setTeams(prev => prev.filter(t => t.id !== id))
-      showToast(`Team "${name}" deleted`, 'success')
+    try {
+      // Server-side ordered delete: matches/robots are FK-bound to teams, so
+      // a client-side teams-row delete always dies with a RESTRICT violation.
+      const res = await adminFetch(supabase, '/api/admin/delete-team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ team_id: id }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        showToast(`Delete failed: ${json.error || res.statusText}`, 'error')
+      } else {
+        setTeams(prev => prev.filter(t => t.id !== id))
+        const bits = [
+          json.deletedMatches ? `${json.deletedMatches} match(es)` : null,
+          json.deletedRobots ? `${json.deletedRobots} robot(s)` : null,
+        ].filter(Boolean).join(', ')
+        showToast(
+          `Team "${name}" deleted${bits ? ` (${bits} removed)` : ''} — regenerate Phase 1 for a clean schedule${json.knockoutNote ? '. ' + json.knockoutNote : ''}`,
+          'success'
+        )
+      }
+    } catch (e) {
+      showToast(`Delete failed: ${e instanceof Error ? e.message : 'network error'}`, 'error')
     }
     setSavingId(null)
   }

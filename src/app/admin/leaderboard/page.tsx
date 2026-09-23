@@ -2,6 +2,7 @@
 // Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/components/AuthProvider'
 
@@ -80,9 +81,12 @@ export default function AdminLeaderboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:justify-between pb-4"
           style={{ borderBottom: '1px solid var(--color-border)' }}>
           <div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>
-              Phase 1 Leaderboard
-            </h1>
+            <div className="flex items-center gap-3">
+              <Link href="/admin" className="btn" style={{ minHeight: 40 }}>← Dashboard</Link>
+              <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>
+                Phase 1 Leaderboard
+              </h1>
+            </div>
             <p style={{ fontSize: '0.8rem', color: 'var(--color-text-secondary)', margin: '4px 0 0' }}>
               via get_phase1_leaderboard()
               {lastRefresh && <> · last refresh {new Date(lastRefresh).toLocaleTimeString()}</>}

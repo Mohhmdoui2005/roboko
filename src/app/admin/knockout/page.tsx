@@ -2,6 +2,7 @@
 // Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { useAuth } from '@/components/AuthProvider'
 import BracketViz from '@/components/BracketViz'
@@ -126,7 +127,10 @@ export default function AdminKnockoutPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4"
           style={{ borderBottom: '1px solid var(--color-border)' }}>
           <div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>Knockout Dashboard</h1>
+            <div className="flex items-center gap-3">
+              <Link href="/admin" className="btn" style={{ minHeight: 40 }}>← Dashboard</Link>
+              <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>Knockout Dashboard</h1>
+            </div>
             <p style={{ fontSize: '0.85rem', color: 'var(--color-text-secondary)', marginTop: 4 }}>
               Top 16 → shuffle → confirm &amp; publish. Winners advance server-side.
             </p>

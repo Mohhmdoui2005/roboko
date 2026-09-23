@@ -34,6 +34,25 @@ interface TeamNotification {
   match_id: string | null
 }
 
+interface TeamMatch {
+  id: string
+  arena_id: string
+  queue_index: number
+  subphase: number | null
+  status: string
+  team1_id: string | null
+  team2_id: string | null
+  current_round: number | null
+  winner_id: string | null
+}
+
+interface TeamMatchRound {
+  match_id: string
+  round_number: number
+  team1_result: number | null
+  team2_result: number | null
+}
+
 export default function ParticipantDashboard() {
   const { user, teamId, isLoading } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
@@ -43,6 +62,11 @@ export default function ParticipantDashboard() {
   const [dismissedNotifs, setDismissedNotifs] = useState<Set<string>>(new Set())
   const [robots, setRobots] = useState<TeamRobot[]>([])
   const [loadingRobots, setLoadingRobots] = useState(true)
+  const [teamMatches, setTeamMatches] = useState<TeamMatch[]>([])
+  const [matchRounds, setMatchRounds] = useState<TeamMatchRound[]>([])
+  const [teamsMap, setTeamsMap] = useState<Record<string, string>>({})
+  const [loadingMatches, setLoadingMatches] = useState(true)
+  const [timeUp, setTimeUp] = useState(false)
   // offsetMs: Date.now() − serverNow — corrects for device clock drift
   const [offsetMs, setOffsetMs] = useState(0)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -80,7 +104,16 @@ export default function ParticipantDashboard() {
   const fetchActiveSession = useCallback(async () => {
     const { data } = await supabase.rpc('get_my_active_session')
     setActiveSession(data ?? null)
+    // A fresh session clears any earlier time-up alert.
+    if (data) setTimeUp(false)
   }, [supabase])
+
+  // ── Session hit zero: unmissable leave-the-room alert ────────────────────
+  const handleSessionExpired = useCallback(() => {
+    setTimeUp(true)
+    try { navigator.vibrate(200) } catch { /* unsupported — visual alert stands */ }
+    fetchActiveSession()
+  }, [fetchActiveSession])
 
   // ── Team robot(s): their ROBOT_TEST QR is what the test room scans ───────
   const fetchRobots = useCallback(async (tid: string | null | undefined) => {
@@ -96,6 +129,40 @@ export default function ParticipantDashboard() {
       .order('name')
     if (data) setRobots(data as TeamRobot[])
     setLoadingRobots(false)
+  }, [supabase])
+
+  // ── My qualification matches: published only (publish is the release gate).
+  // Polled every 10 s like everything else here — intentionally no realtime.
+  const fetchTeamMatches = useCallback(async (tid: string) => {
+    const [{ data: mData }, { data: tData }] = await Promise.all([
+      supabase
+        .from('matches')
+        .select('id,arena_id,queue_index,subphase,status,team1_id,team2_id,current_round,winner_id')
+        .or(`team1_id.eq.${tid},team2_id.eq.${tid}`)
+        .eq('is_knockout', false)
+        .in('status', ['PUBLISHED', 'IN_PROGRESS', 'COMPLETED'])
+        .order('subphase', { ascending: true })
+        .order('queue_index', { ascending: true }),
+      supabase.from('teams').select('id,name'),
+    ])
+    const list = (mData ?? []) as TeamMatch[]
+    setTeamMatches(list)
+    if (tData) {
+      const map: Record<string, string> = {}
+      ;(tData as { id: string; name: string }[]).forEach(t => { map[t.id] = t.name })
+      setTeamsMap(map)
+    }
+    if (list.length > 0) {
+      const { data: rData } = await supabase
+        .from('match_rounds')
+        .select('match_id,round_number,team1_result,team2_result')
+        .in('match_id', list.map(m => m.id))
+        .order('round_number', { ascending: true })
+      if (rData) setMatchRounds(rData as TeamMatchRound[])
+    } else {
+      setMatchRounds([])
+    }
+    setLoadingMatches(false)
   }, [supabase])
 
   // ── GET READY alerts: poll notifications for MY team every 10 s ───────────
@@ -138,6 +205,19 @@ export default function ParticipantDashboard() {
     fetchRobots(profileTeamId ?? teamId)
   }, [profileTeamId, teamId, fetchRobots])
 
+  // Matches load the same way — published qual matches + their rounds,
+  // refreshed every 10 s so results land without a reload.
+  const effectiveTeamId = profileTeamId ?? teamId ?? null
+  useEffect(() => {
+    if (!user || !effectiveTeamId) {
+      if (!isLoading) setLoadingMatches(false)
+      return
+    }
+    fetchTeamMatches(effectiveTeamId)
+    const t = setInterval(() => fetchTeamMatches(effectiveTeamId), 10000)
+    return () => clearInterval(t)
+  }, [user, isLoading, effectiveTeamId, fetchTeamMatches])
+
   // ─────────────────────────────────────────────────────────────────────────
 
   if (isLoading || loadingProfile) {
@@ -163,6 +243,33 @@ export default function ParticipantDashboard() {
   }
 
   const visibleNotif = teamNotifs.find(n => !dismissedNotifs.has(n.id)) ?? null
+
+  // ── Match presentation from MY team's perspective ────────────────────────
+  const oppName = (m: TeamMatch) => {
+    const oppId = m.team1_id === effectiveTeamId ? m.team2_id : m.team1_id
+    return oppId ? teamsMap[oppId] ?? oppId.slice(0, 8) : 'TBD'
+  }
+  const roundsFor = (matchId: string) =>
+    matchRounds.filter(r => r.match_id === matchId)
+  const roundOutcome = (r: TeamMatchRound, m: TeamMatch): 'Won' | 'Lost' | 'Draw' => {
+    const mine = m.team1_id === effectiveTeamId ? r.team1_result : r.team2_result
+    const theirs = m.team1_id === effectiveTeamId ? r.team2_result : r.team1_result
+    if (mine === 1 && theirs === 0) return 'Won'
+    if (mine === 0 && theirs === 1) return 'Lost'
+    return 'Draw'
+  }
+  const matchOutcome = (m: TeamMatch): string => {
+    if (m.status === 'COMPLETED') {
+      if (!m.winner_id) return 'Draw'
+      return m.winner_id === effectiveTeamId ? 'Won' : 'Lost'
+    }
+    if (m.status === 'IN_PROGRESS') return `Live · round ${m.current_round ?? 1}`
+    return 'Scheduled'
+  }
+  const statusBadgeClass = (status: string) =>
+    status === 'COMPLETED' ? 'badge-success'
+    : status === 'IN_PROGRESS' ? 'badge-warning'
+    : status === 'PUBLISHED' ? 'badge-info' : 'badge-neutral'
 
   return (
     <div
@@ -220,6 +327,93 @@ export default function ParticipantDashboard() {
           </div>
         )}
 
+        {/* ── TIME'S UP — leave the room (persists until dismissed) ── */}
+        {timeUp && !activeSession && (
+          <div className="p-5 text-center space-y-3"
+            style={{
+              borderRadius: 8,
+              border: '2px solid var(--color-danger)',
+              background: 'color-mix(in srgb, var(--color-danger) 12%, var(--color-surface))',
+            }} role="alert">
+            <p style={{ fontWeight: 800, color: 'var(--color-danger)', margin: 0, fontSize: '1.5rem' }}>
+              TIME'S UP
+            </p>
+            <p style={{ margin: 0, fontSize: '1rem', color: 'var(--color-text-primary)', fontWeight: 600 }}>
+              Your test time is over — please leave the test room now.
+            </p>
+            <button className="btn" style={{ minHeight: 48 }}
+              onClick={() => setTimeUp(false)}>
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* ── My Matches (published qualification, polled every 10 s) ── */}
+        <div className="card card-emphasized p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-text-primary)', margin: 0 }}>
+              My Matches
+            </h2>
+            <span className="badge badge-neutral">{teamMatches.length} matches</span>
+          </div>
+
+          {loadingMatches ? (
+            <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+              Loading matches…
+            </div>
+          ) : teamMatches.length === 0 ? (
+            <div style={{ padding: '2rem 0', textAlign: 'center', color: 'var(--color-text-tertiary)', fontSize: '0.875rem' }}>
+              No matches published for your team yet — check back after the admin publishes Phase 1.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {teamMatches.map(m => {
+                const outcome = matchOutcome(m)
+                const outcomeColor =
+                  outcome === 'Won' ? 'var(--color-success)'
+                  : outcome === 'Lost' ? 'var(--color-danger)'
+                  : outcome === 'Draw' ? 'var(--color-text-secondary)'
+                  : outcome.startsWith('Live') ? 'var(--color-warning)'
+                  : 'var(--color-text-tertiary)'
+                return (
+                  <div key={m.id} className="p-4 space-y-2"
+                    style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 8 }}>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <p style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--color-text-primary)' }}>
+                        vs {oppName(m)}
+                      </p>
+                      <span className={`badge ${statusBadgeClass(m.status)}`}>{m.status}</span>
+                    </div>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--color-text-tertiary)' }}>
+                      {m.arena_id} · Queue #{m.queue_index}{m.subphase ? ` · Subphase ${m.subphase}` : ''}
+                    </p>
+                    {roundsFor(m.id).length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {roundsFor(m.id).map(r => {
+                          const ro = roundOutcome(r, m)
+                          return (
+                            <span key={r.round_number} className="badge"
+                              style={{
+                                borderColor: ro === 'Won' ? 'var(--color-success)' : ro === 'Lost' ? 'var(--color-danger)' : 'var(--color-border)',
+                                color: ro === 'Won' ? 'var(--color-success)' : ro === 'Lost' ? 'var(--color-danger)' : 'var(--color-text-secondary)',
+                                fontSize: '0.75rem', padding: '0.3rem 0.7rem',
+                              }}>
+                              R{r.round_number} · {ro}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
+                    <p style={{ margin: 0, fontSize: '0.875rem', fontWeight: 700, color: outcomeColor }}>
+                      {outcome}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
         {/* ── Active Test Session Countdown ── */}
         <div className={`card ${activeSession ? 'card-live' : 'card-emphasized'} p-6 space-y-4`}>
           <div className="flex items-center justify-between">
@@ -249,7 +443,7 @@ export default function ParticipantDashboard() {
                   <Countdown
                     endsAt={activeSession.ends_at}
                     offsetMs={offsetMs}
-                    onExpired={fetchActiveSession}
+                    onExpired={handleSessionExpired}
                   />
                 </div>
                 <p style={{ fontSize: '0.6875rem', color: 'var(--color-text-tertiary)', marginTop: 6 }}>

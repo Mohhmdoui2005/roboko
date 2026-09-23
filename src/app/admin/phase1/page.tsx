@@ -2,6 +2,7 @@
 // Hallmark · genre: atmospheric · macrostructure: Bento Grid · theme: Terminal · design-system: design.md · designed-as-app
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/client'
 import { adminFetch } from '@/lib/adminApi'
 import { useAuth } from '@/components/AuthProvider'
@@ -52,7 +53,7 @@ export default function AdminPhase1Dashboard() {
     setTimeout(() => setToast(null), 4000)
   }, [])
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (quiet = false) => {
     const [{ data: mData, error: mErr }, { data: tData }] = await Promise.all([
       supabase
         .from('matches')
@@ -63,7 +64,7 @@ export default function AdminPhase1Dashboard() {
       supabase.from('teams').select('id,name'),
     ])
     if (mErr) {
-      showToast(`Failed to load matches: ${mErr.message}`, 'error')
+      if (!quiet) showToast(`Failed to load matches: ${mErr.message}`, 'error')
       setLoading(false)
       return
     }
@@ -77,17 +78,34 @@ export default function AdminPhase1Dashboard() {
   }, [supabase, showToast])
 
   useEffect(() => {
-    if (!authLoading && user && role === 'ADMIN') fetchAll()
+    if (!authLoading && user && role === 'ADMIN') {
+      fetchAll()
+      // Jury scores live — repoll so warnings/rounds/status stay correct.
+      const t = setInterval(() => fetchAll(true), 10000)
+      return () => clearInterval(t)
+    }
   }, [authLoading, user, role, fetchAll])
 
   const handleGenerateMatches = async () => {
+    // Full rebuild wipes everything qualitative — guard live results.
+    const started = matches.filter(m => m.status !== 'PENDING').length
+    if (started > 0 && !window.confirm(
+      `Regenerate wipes ${matches.length} qualification match(es), including ${started} already started/completed — those results will be lost. Continue?`
+    )) return
     setGenerating(true)
     const { data, error } = await supabase.rpc('generate_phase1_matches')
     if (error) {
       showToast(`Generate failed: ${error.message}`, 'error')
     } else {
       setGenResult((data ?? {}) as Record<string, unknown>)
-      showToast('Phase 1 matches generated', 'success')
+      const total = (data as { total_matches?: number } | null)?.total_matches
+      const teams = (data as { teams?: number } | null)?.teams
+      showToast(
+        total != null && teams != null
+          ? `Phase 1 regenerated — ${total} matches for ${teams} teams, zero walkovers`
+          : 'Phase 1 matches generated',
+        'success'
+      )
       fetchAll()
     }
     setGenerating(false)
@@ -199,39 +217,67 @@ export default function AdminPhase1Dashboard() {
     URL.revokeObjectURL(url)
   }
 
-  // ── Client-side verification: zero repeated pairings ───────────────────────
+  // Belt-and-braces: hide any match whose team no longer exists (e.g.
+  // leftovers predating the ordered /api/admin/delete-team cleanup).
+  // The delete route removes dependents FK-first, so this should normally
+  // hide nothing — it exists so a stale row can never linger in the list.
+  const visibleMatches = useMemo(
+    () =>
+      matches.filter(
+        m =>
+          (!m.team1_id || teamNames[m.team1_id]) &&
+          (!m.team2_id || teamNames[m.team2_id])
+      ),
+    [matches, teamNames]
+  )
+
+  // ── Client-side verification: roster-adaptive ──────────────────────────────
+  // Target is floor(3N/2): every team 3 vs 3 distinct, except one team at 2
+  // when N is odd (arithmetically optimal — see generate_phase1_matches).
+  // Orphan matches (deleted teams) are excluded — same list the admin sees.
   const verification = useMemo(() => {
+    const rosterN = Object.keys(teamNames).length
+    const odd = rosterN % 2 === 1
+    const expectedTotal = Math.floor((3 * rosterN) / 2)
+    const total = visibleMatches.length
+    // Odd rosters accept expectedTotal - 1: the unpatched fallback (3 at 2)
+    // when all 3 mutual bye-pairings are already taken (vanishingly rare).
+    const totalOk = total === expectedTotal || (odd && total === expectedTotal - 1)
     const pairKey = (a: string | null, b: string | null) =>
       [a ?? '?', b ?? '?'].sort().join('|')
-    const all = matches.map(m => pairKey(m.team1_id, m.team2_id))
+    const all = visibleMatches.map(m => pairKey(m.team1_id, m.team2_id))
     const dupesAll = all.length - new Set(all).size
     const perSub: Record<string, { n: number; dupes: number }> = {}
-    for (const m of matches) {
+    for (const m of visibleMatches) {
       const s = `Subphase ${m.subphase ?? '?'}`;
       (perSub[s] ??= { n: 0, dupes: 0 }).n++
     }
     for (const s of Object.keys(perSub)) {
-      const keys = matches
+      const keys = visibleMatches
         .filter(m => `Subphase ${m.subphase ?? '?'}` === s)
         .map(m => pairKey(m.team1_id, m.team2_id))
       perSub[s].dupes = keys.length - new Set(keys).size
     }
-    // Per arena: contiguous queues 1..N (N varies: 14/14/13/13 over 4 arenas)
+    const subSizes = Object.values(perSub).map(v => v.n)
+    const subSizesOk = subSizes.length === 0 ||
+      Math.max(...subSizes) - Math.min(...subSizes) <= 1
+    // Per arena: contiguous queues 1..N (sizes follow the roster now)
     const perArena: Record<string, { n: number; queuesOk: boolean; dupes: number }> = {}
-    for (const m of matches) {
+    for (const m of visibleMatches) {
       (perArena[m.arena_id] ??= { n: 0, queuesOk: true, dupes: 0 }).n++
     }
     for (const a of Object.keys(perArena)) {
-      const am = matches.filter(m => m.arena_id === a)
+      const am = visibleMatches.filter(m => m.arena_id === a)
       const queues = am.map(m => m.queue_index).sort((x, y) => x - y)
       perArena[a].queuesOk = queues.length > 0 && queues.every((q, i) => q === i + 1)
       const keys = am.map(m => pairKey(m.team1_id, m.team2_id))
       perArena[a].dupes = keys.length - new Set(keys).size
     }
-    // Per team: every team plays exactly 3 matches vs 3 distinct opponents
+    // Per team: 3 vs 3 distinct each (odd roster: one team at 2, ≤3 in the
+    // unpatched fallback — never a walkover, every match has two teams).
     const counts: Record<string, number> = {}
     const opps: Record<string, Set<string>> = {}
-    for (const m of matches) {
+    for (const m of visibleMatches) {
       for (const [me, other] of [[m.team1_id, m.team2_id], [m.team2_id, m.team1_id]] as const) {
         if (!me || !other) continue
         counts[me] = (counts[me] ?? 0) + 1
@@ -239,14 +285,20 @@ export default function AdminPhase1Dashboard() {
       }
     }
     const vals = Object.values(counts)
+    const short = Object.keys(counts).filter(id => counts[id] < 3).length
+    const perTeamOk = odd
+      ? Object.keys(counts).every(id =>
+          counts[id] <= 3 && counts[id] >= 2 && opps[id].size === counts[id]) && short <= 3
+      : Object.keys(counts).every(id => counts[id] === 3 && opps[id].size === 3)
     const perTeam = {
       teams: Object.keys(counts).length,
       min: vals.length ? Math.min(...vals) : 0,
       max: vals.length ? Math.max(...vals) : 0,
-      off: Object.keys(counts).filter(id => counts[id] !== 3 || opps[id].size !== 3).length,
+      short,
+      ok: perTeamOk && Object.keys(counts).length > 0,
     }
-    return { dupesAll, perSub, perArena, perTeam, total: matches.length }
-  }, [matches])
+    return { rosterN, odd, expectedTotal, total, totalOk, dupesAll, perSub, subSizesOk, perArena, perTeam }
+  }, [visibleMatches, teamNames])
 
   const groupByArena = (list: Match[]): ArenaGroup[] => {
     const groups = new Map<string, Match[]>()
@@ -271,6 +323,8 @@ export default function AdminPhase1Dashboard() {
 
   const teamName = (id: string | null) => (id ? teamNames[id] ?? id.slice(0, 8) : '—')
 
+  const hiddenOrphans = matches.length - visibleMatches.length
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen flex items-center justify-center text-sm"
@@ -288,9 +342,9 @@ export default function AdminPhase1Dashboard() {
     )
   }
 
-  const arenaGroups = groupByArena(matches)
-  const pendingCount = matches.filter(m => m.status === 'PENDING').length
-  const publishedCount = matches.filter(m => m.status === 'PUBLISHED').length
+  const arenaGroups = groupByArena(visibleMatches)
+  const pendingCount = visibleMatches.filter(m => m.status === 'PENDING').length
+  const publishedCount = visibleMatches.filter(m => m.status === 'PUBLISHED').length
   const teamsCount = Object.keys(teamNames).length
 
   return (
@@ -300,14 +354,21 @@ export default function AdminPhase1Dashboard() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4"
           style={{ borderBottom: '1px solid var(--color-border)' }}>
           <div>
-            <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>
-              Phase 1 Qualification — Admin
-            </h1>
+            <div className="flex items-center gap-3">
+              <Link href="/admin" className="btn" style={{ minHeight: 40 }}>← Dashboard</Link>
+              <h1 style={{ fontSize: '1.75rem', fontWeight: 700, margin: 0 }}>
+                Phase 1 Qualification — Admin
+              </h1>
+            </div>
             <p style={{ fontSize: '0.875rem', color: 'var(--color-text-secondary)', marginTop: 4 }}>
-              Generate pairings → publish per match or all at once → jury scores in realtime
+              Builds from the current roster — floor(3N/2) matches, no walkovers (delete no-shows first) → publish → jury scores in realtime
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
+            <button className="btn" onClick={() => fetchAll()}
+              disabled={generating || publishingAll} style={{ minWidth: 120 }}>
+              Refresh
+            </button>
             <button className="btn btn-primary" onClick={handleGenerateMatches}
               disabled={generating} style={{ minWidth: 200 }}>
               {generating ? 'Generating…' : 'Generate Phase 1 Matches'}
@@ -329,17 +390,27 @@ export default function AdminPhase1Dashboard() {
           </div>
         )}
 
+        {hiddenOrphans > 0 && (
+          <div className="p-3" style={{ borderRadius: 8, border: '1px solid var(--color-warning)', background: 'color-mix(in srgb, var(--color-warning) 8%, var(--color-surface))' }} role="status">
+            <span style={{ fontSize: '0.875rem', color: 'var(--color-warning)', fontWeight: 600 }}>
+              {hiddenOrphans} match{hiddenOrphans === 1 ? '' : 'es'} hidden — {hiddenOrphans === 1 ? 'it references' : 'they reference'} a deleted team. Regenerate Phase 1 for a clean schedule.
+            </span>
+          </div>
+        )}
+
         {/* ── Verification (acceptance criterion #1) ── */}
         <div className="card p-6 space-y-4" style={{ borderColor: 'var(--color-accent)' }}>
           {/*<h3 style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--color-accent)', margin: 0 }}>
-            Verification — 54 matches, zero repeats, 3 per team
+            Verification — floor(3N/2) matches, zero repeats, 3 per team (one short if N odd)
           </h3>*/}
           <div className="grid gap-4 sm:grid-cols-5">
             <div className="p-4 sm:col-span-3" style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-card)' }}>
               <p style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', margin: '0 0 4px' }}>TOTAL MATCHES</p>
               <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', margin: 0 }}>{verification.total}</p>
-              <p className="font-mono" style={{ fontSize: '0.75rem', color: verification.total === 54 ? 'var(--color-success)' : 'var(--color-danger)', marginTop: 4 }}>
-                {verification.total === 54 ? 'OK — exactly 54' : 'ERR — expected 54'}
+              <p className="font-mono" style={{ fontSize: '0.75rem', color: verification.totalOk ? 'var(--color-success)' : 'var(--color-danger)', marginTop: 4 }}>
+                {verification.totalOk
+                  ? `OK — ${verification.expectedTotal} for ${verification.rosterN} teams`
+                  : `ERR — expected ${verification.expectedTotal}`}
               </p>
             </div>
             <div className="p-4 sm:col-span-2" style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-card)' }}>
@@ -350,27 +421,36 @@ export default function AdminPhase1Dashboard() {
               </p>
             </div>
             <div className="p-4 sm:col-span-2" style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-card)' }}>
-              <p style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', margin: '0 0 4px' }}>PER SUBPHASE (18 EACH)</p>
+              <p style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', margin: '0 0 4px' }}>PER SUBPHASE (EVEN SPLIT)</p>
               {Object.entries(verification.perSub).map(([s, v]) => (
                 <p key={s} className="font-mono" style={{ fontSize: '0.8rem', margin: '2px 0' }}>
-                  {s}: {v.n} {v.n === 18 ? 'OK' : 'ERR'} · dupes {v.dupes} {v.dupes === 0 ? 'OK' : 'ERR'}
+                  {s}: {v.n} · dupes {v.dupes} {v.dupes === 0 ? 'OK' : 'ERR'}
                 </p>
               ))}
               {Object.keys(verification.perSub).length === 0 && (
                 <p style={{ fontSize: '0.8rem', color: 'var(--color-text-tertiary)' }}>—</p>
               )}
+              {Object.keys(verification.perSub).length > 0 && (
+                <p className="font-mono" style={{ fontSize: '0.75rem', color: verification.subSizesOk ? 'var(--color-success)' : 'var(--color-danger)', margin: '4px 0 0' }}>
+                  {verification.subSizesOk ? 'OK — even split' : 'ERR — uneven split'}
+                </p>
+              )}
             </div>
             <div className="p-4 sm:col-span-1" style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-card)' }}>
-              <p style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', margin: '0 0 4px' }}>PER TEAM (3 EACH)</p>
+              <p style={{ fontSize: '0.72rem', color: 'var(--color-text-tertiary)', margin: '0 0 4px' }}>
+                {verification.odd ? 'PER TEAM (3, ONE SHORT)' : 'PER TEAM (3 EACH)'}
+              </p>
               <p style={{ fontSize: '2rem', fontWeight: 700, fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums', margin: 0 }}>
                 {verification.perTeam.min}–{verification.perTeam.max}
               </p>
-              <p className="font-mono" style={{ fontSize: '0.75rem', color: verification.perTeam.off === 0 && verification.perTeam.teams > 0 ? 'var(--color-success)' : 'var(--color-danger)', marginTop: 4 }}>
+              <p className="font-mono" style={{ fontSize: '0.75rem', color: verification.perTeam.ok ? 'var(--color-success)' : 'var(--color-danger)', marginTop: 4 }}>
                 {verification.perTeam.teams === 0
                   ? '—'
-                  : verification.perTeam.off === 0
-                    ? `OK — all ${verification.perTeam.teams} teams at 3`
-                    : `ERR — ${verification.perTeam.off} team(s) off 3`}
+                  : verification.perTeam.ok
+                    ? verification.odd && verification.perTeam.short > 0
+                      ? `OK — ${verification.perTeam.short} short (worst case 1)`
+                      : `OK — all ${verification.perTeam.teams} teams at 3`
+                    : `ERR — workload off (short: ${verification.perTeam.short})`}
               </p>
             </div>
             <div className="p-4 sm:col-span-2" style={{ background: 'var(--color-bg)', borderRadius: 'var(--radius-card)' }}>
@@ -450,7 +530,7 @@ export default function AdminPhase1Dashboard() {
         <div className="space-y-6">
           {arenaGroups.length === 0 ? (
             <div className="card p-12 text-center" style={{ color: 'var(--color-text-tertiary)' }}>
-              No qualification matches found. Click <strong>Generate Phase 1 Matches</strong> to create 54.
+              No qualification matches found. Click <strong>Generate Phase 1 Matches</strong> to build the schedule for {teamsCount} team(s) ({Math.floor((3 * teamsCount) / 2)} matches).
             </div>
           ) : (
             arenaGroups.map(({ arena_id, matches: arenaMatches }) => (
@@ -469,7 +549,7 @@ export default function AdminPhase1Dashboard() {
                         <th>Team 2</th>
                         <th style={{ width: 120 }}>Status</th>
                         <th style={{ width: 70 }}>Round</th>
-                        <th style={{ width: 110 }}>Warn T1/T2</th>
+                        <th style={{ width: 110 }} title="Current-round warnings — counters reset to 0 every recorded round">Warn T1/T2</th>
                         <th style={{ width: 140 }}>Action</th>
                       </tr>
                     </thead>
